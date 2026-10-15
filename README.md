@@ -21,7 +21,7 @@ Built for the [Agentic AI for Africa Innovation Challenge — Governance track](
 
 ## Demo video
 
-A 30-second walkthrough of the deployed platform running end-to-end against a Neon Postgres database on Vercel. The video lives in [`video/uwazi-demo.mp4`](./video/uwazi-demo.mp4) (590 KB, H.264, no audio) — see [`video/README.md`](./video/README.md) for the scene-by-scene breakdown.
+A 63-second end-to-end walkthrough of the deployed platform running against a Neon Postgres database on Vercel. Shows every step — ingestion state (via `/api/v1/admin/seed-status`), the rendered tenders list, ranked report with citations, a live "Run agentic evaluation" click that runs the LangGraph workflow in real time, the audit trail, and the citizen-facing Open Notices layer. The video lives in [`video/uwazi-demo.mp4`](./video/uwazi-demo.mp4) (1.1 MB, H.264, no audio) — see [`video/README.md`](./video/README.md) for the scene-by-scene breakdown.
 
 Live deployment: **https://uwazi-rose.vercel.app**
 
