@@ -48,7 +48,7 @@ Enforced at three layers:
 
 1. **SQL** — `CHECK (decided_by <> 'agent')` constraint + `BEFORE INSERT` trigger on `decisions`. Verified by `tests/test_human_in_the_loop.py::test_sql_trigger_refuses_agent_writer`.
 2. **MCP tool** — `record_officer_decision` refuses any request where `principal_kind='agent'`. Verified by `tests/test_human_in_the_loop.py::test_tool_refuses_agent_principal`.
-3. **Process** — the test suite runs on every commit.
+3. **Verification** — focused tests exercise both the tool-layer refusal and the database constraint.
 
 ## Citations
 
@@ -58,7 +58,7 @@ The citation validator performs five checks (existence, pointer, span support, c
 
 ## Audit trail
 
-Every tool call + every AI proposal + every human decision produces an `AuditEntry` with `actor`, `actor_kind` (`human` or `agent`), `payload`, and `timestamp`. The trail is queryable via `get_audit_trail`, the HTTP API, and the review UI. Signed-PDF export remains future work.
+Every state-changing tool call, AI proposal, and human decision produces an `AuditEntry` with `actor`, `actor_kind` (`human` or `agent`), `payload`, and `timestamp`. The trail is queryable via `get_audit_trail`, the HTTP API, and the review UI. A separate global log for read-only MCP calls and signed-PDF export remain future work.
 
 ## What is unfinished (honest list)
 

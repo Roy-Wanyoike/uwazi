@@ -69,7 +69,7 @@ The README has a *What is unfinished* section. The headline gaps:
 
 ### Named office
 
-**Makueni County Government — Department of Water & Sanitation.** The sample tender in [samples/tender-makueni-water.md](./samples/tender-makueni-water.md) is a faithful synthetic of a real Makueni County water reticulation project. The eight criteria types (eligibility, mandatory ISO 9001, technical, financial, compliance, methodology, audited accounts, weights) are the criteria types a real Makueni evaluation committee would extract.
+**Prototype scenario: Makueni County Government — Department of Water & Sanitation.** The sample in [samples/tender-makueni-water.md](./samples/tender-makueni-water.md) is synthetic and shaped around fields and criteria found in public procurement notices. It is not a real bid evaluation and does not imply county endorsement.
 
 ### Real workflow
 
@@ -114,7 +114,7 @@ Every score, every risk flag, every recommendation cites the source paragraph. T
 
 ### Readable log
 
-The audit trail ([`get_audit_trail` MCP tool](./src/uwazi/mcp_server.py)) lists every AI proposal (orchestrator run, plain-language explanation) and every human decision (officer decision) in chronological order. Each entry has `actor`, `actor_kind` (`human` or `agent`), `payload`, `timestamp`. The trail is queryable and exportable.
+The audit trail ([`get_audit_trail` MCP tool](./src/uwazi/mcp_server.py)) lists every AI proposal (orchestrator run, plain-language explanation) and every human decision (officer decision) in chronological order. Each entry has `actor`, `actor_kind` (`human` or `agent`), `payload`, and `timestamp`. The trail is queryable through MCP, the API, and the UI.
 
 ### Known cost per run
 
@@ -160,4 +160,4 @@ See [DEMO_SCRIPT.md](./DEMO_SCRIPT.md) — the full 20-minute walkthrough with t
 | Defensibility | 10 | `get_audit_trail` + `token_cost_cents` + per-claim citations |
 | Demo | 5 | `scripts/demo-video-script.md` + `DEMO_SCRIPT.md` |
 
-**Total: 100 points.** Every criterion maps to a file or command in this repository.
+**Rubric total: 100 points.** The table maps each criterion to the strongest evidence currently present; the open-weights run, complete tool-call logging, public video, and domain interview remain explicit gaps.

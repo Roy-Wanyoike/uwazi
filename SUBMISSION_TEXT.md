@@ -1,25 +1,17 @@
-# Submission Text — 300 words
+# Submission Text — around 300 words
 
-> Required by the challenge brief: *"A text description of what it does, which theme it fits, and which institution and workflow it serves. Around 300 words."*
-
----
-
-**Project:** Uwazi — Open Contracting Intelligence for African Procurement
+**Project:** Uwazi — Evidence-first tender review
 **Track:** Governance — The Bid Box Challenge
-**Theme:** Digital economy — Open contracting (make the pipeline legible to citizens and small suppliers)
-**Institution:** Makueni County Government, Department of Water & Sanitation (Kenya)
-**Workflow:** Tender evaluation — the 26-day committee exercise that sorts bids, ticks off mandatory documents, compares prices, and writes a defensible report.
+**Theme:** Digital economy — Open contracting
+**Prototype institution:** Makueni County Government, Department of Water & Sanitation
+**Workflow:** Preparing the committee's tender-evaluation file
 
-**What it does**
+Uwazi helps a county tender evaluation committee turn tender and bid documents into a defensible review pack. It is not an automated procurement officer. The agent extracts criteria, checks and scores each bid, flags missing documents and suspicious financials, then produces a ranked draft report with paragraph-level citations. It stops there. A named human records the decision.
 
-Uwazi is an agentic AI on the Model Context Protocol that evaluates public tenders in about thirty minutes, with a hard architectural rule: the agent proposes scores, risk flags, and recommendations; a procurement officer records the final decision. The rule is enforced at three layers — SQL `CHECK` + `BEFORE INSERT` trigger, the MCP tool refuses agent principals, and a test suite runs on every commit.
+That boundary is the heart of the project. The MCP tool and a database `CHECK` constraint and trigger block agent principals from writing decisions. AI proposals and human decisions are timestamped and attributed. If someone challenges a score, the reviewer can trace it to the tender paragraph and supplier response supporting it.
 
-The agent is a five-node LangGraph state machine: extract criteria from the tender, analyze each bid against those criteria, score each (bid, criterion) pair, flag compliance risks (missing ISO 9001, abnormally low financials), compose a ranked report. Every score cites a specific paragraph in the source documents. Every AI output is stamped `ai_generated=True`. Every human decision is stamped `actor_kind=human`. The audit trail is queryable and exportable — the artifact an audit office would demand.
+The workflow is a five-node LangGraph state machine rather than a single model call: extract criteria, analyze bids, score responses, flag risks, and compose the report. Uwazi exposes ten reusable MCP tools and borrows the official `mcp-server-fetch` server for robust public-notice retrieval. The configured open-weights path is Qwen2.5-72B-Instruct through ModelScope.
 
-**Citizen-facing layer**
+For the open-contracting theme, Uwazi turns stored notices into plain-language eligibility and document checklists for citizens and small suppliers. Public portals rarely publish confidential bids, so public data supplies notices while the evaluation demo uses synthetic documents and claims no county endorsement.
 
-For the digital-economy / open-contracting theme, Uwazi also exposes a `open_notices` MCP tool that returns every active tender in plain English: eligibility checklist, mandatory documents a small supplier must prepare, deadlines. No legalese, no AI inferences — just structured facts from the stored tender.
-
-**Stack**
-
-Uwazi MCP server (built — 10 tools). Official `mcp-server-fetch` (borrowed — handles redirects, gzip, robots.txt, SSRF). LangGraph orchestration. Qwen2.5-72B-Instruct via ModelScope (open-weights). SQLite (portable to Postgres). MIT-licensed. 33 passing tests. Repository at https://github.com/Roy-Wanyoike/uwazi. One-command demo: `./run-demo.sh`.
+The repository is MIT-licensed, runs in one command, and includes 42 passing tests. The remaining submission-critical gaps are stated plainly: capture a real Qwen run, complete read-only tool-call logging, publish the unedited three-minute demo, and validate the workflow with a procurement professional.

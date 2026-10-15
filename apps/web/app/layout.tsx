@@ -3,16 +3,16 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Uwazi — Open Contracting Intelligence for African Procurement",
+  title: "Uwazi — Evidence-first Tender Review",
   description:
-    "An agentic AI on MCP that evaluates public tenders in 30 minutes — with a hard rule that the AI proposes and the procurement officer decides.",
+    "Uwazi turns tender and bid documents into a cited review pack. The AI proposes; the procurement committee decides.",
   icons: {
     icon: "/favicon.svg",
   },
   openGraph: {
-    title: "Uwazi — Open Contracting Intelligence for African Procurement",
+    title: "Uwazi — Evidence-first Tender Review",
     description:
-      "An agentic AI on MCP that evaluates public tenders in 30 minutes — with a hard rule that the AI proposes and the procurement officer decides.",
+      "Uwazi turns tender and bid documents into a cited review pack. The AI proposes; the procurement committee decides.",
     type: "website",
   },
 };

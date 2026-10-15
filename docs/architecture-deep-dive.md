@@ -103,7 +103,7 @@ The Python agent service has no direct DB credentials on the `decisions` table. 
 
 ### Process level
 
-The test suite includes `tests/test_human_in_the_loop.py` which asserts that the orchestrator, the agents, and the MCP server cannot insert into `decisions`. This test runs on every commit.
+The test suite includes `tests/test_human_in_the_loop.py`, which verifies that agent principals cannot insert into `decisions` through either the MCP tool or the database boundary.
 
 ## 6. Storage
 
@@ -142,4 +142,4 @@ The challenge brief says: *"Build an agentic AI, using MCP, plus open-source too
 - **Bid submission portal.** Uwazi evaluates bids; it does not receive them. Bids arrive as documents (PDF or Markdown) via `ingest_bid`.
 - **Payment integration.** Not part of the evaluation workflow.
 - **Multi-tenant.** Uwazi is single-tenant per deployment. A procurement office runs their own instance.
-- **Appeals workflow.** A losing bidder's appeal is a separate process that Uwazi does not implement; the audit trail is exportable so the appeal can be informed by it.
+- **Appeals workflow.** A losing bidder's appeal is a separate process that Uwazi does not implement; the structured audit trail can inform a future appeal workflow.

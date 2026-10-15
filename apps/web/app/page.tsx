@@ -6,12 +6,12 @@ export default function HomePage() {
       <section className="hero">
         <div className="container">
           <h1>
-            Open contracting intelligence<br />for African procurement.
+            Evidence-first tender review<br />for African procurement teams.
           </h1>
           <p className="lead">
-            An agentic AI on the Model Context Protocol that evaluates public tenders in 30 minutes —
-            with a hard rule that <strong>the AI proposes</strong> and{" "}
-            <strong>the procurement officer decides</strong>. Enforced at the SQL layer.
+            Uwazi turns tender and bid documents into a cited review pack designed for a roughly
+            20-minute committee review. <strong>The AI proposes</strong>;{" "}
+            <strong>the procurement committee decides</strong>. Enforced at the SQL layer.
           </p>
           <div className="cta">
             <Link href="/tenders" className="btn btn-primary">View tenders →</Link>
@@ -32,7 +32,7 @@ export default function HomePage() {
         <div className="rule-banner">
           <strong>Architectural rule:</strong> The agent may propose scores, risk flags, and recommendations.
           The agent may <strong>never</strong> record a decision. Enforced at three layers — SQL{" "}
-          <code>CHECK</code> + trigger, the MCP tool refuses agent principals, the test suite runs on every commit.
+          <code>CHECK</code> + trigger, the MCP tool refuses agent principals, and focused tests cover both layers.
         </div>
 
         <div className="stats">
@@ -49,8 +49,8 @@ export default function HomePage() {
             <div className="label">Tests passing</div>
           </div>
           <div className="stat">
-            <div className="num">26 → 30</div>
-            <div className="label">Days → minutes</div>
+            <div className="num">26d → ~20m</div>
+            <div className="label">Target review time</div>
           </div>
           <div className="stat">
             <div className="num">MIT</div>

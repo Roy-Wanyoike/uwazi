@@ -18,7 +18,8 @@
 #
 # If you have an OPENAI_API_KEY (or Qwen via ModelScope), set it in .env
 # before running. Otherwise the agent runs in STUB mode (deterministic
-# canned responses — still demonstrates the full workflow).
+# canned responses for development only). A STUB run does not satisfy the
+# hackathon requirement to show one full task on an open-weights model.
 
 set -euo pipefail
 

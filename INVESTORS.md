@@ -1,6 +1,6 @@
 # Uwazi — Investor Brief
 
-> **Open contracting intelligence for African procurement.** An agentic AI on MCP that evaluates public tenders in 30 minutes — with a hard rule that the AI proposes and the procurement officer decides.
+> **Evidence-first tender review for African procurement teams.** Uwazi turns tender and bid documents into a cited review pack, then stops: the AI proposes and the procurement committee decides.
 
 ## The problem
 
@@ -14,9 +14,9 @@ The status quo has three structural failures:
 
 ## The wedge
 
-Uwazi is an agentic AI on the Model Context Protocol that turns the 26-day evaluation into a 30-minute officer-reviewed exercise. The agent extracts criteria from the tender, scores every bid against every criterion with paragraph-level citations, flags compliance risks (missing mandatory documents, abnormally low financials), and produces a ranked report with a per-bid recommendation. A procurement officer reviews the report and records the final `accept` / `reject` / `needs_review` decision — the agent never records that decision.
+Uwazi is an agentic AI on the Model Context Protocol that targets a roughly 20-minute first-pass review pack for the 26-day workflow described in the challenge brief. The agent extracts criteria, scores bids with paragraph-level citations, flags compliance risks, and produces a ranked draft report. A procurement committee reviews the evidence and records the final `accept` / `reject` / `needs_review` decision — the agent never records that decision.
 
-The architectural rule is enforced at three layers (SQL `CHECK + trigger`, MCP tool refuses agent principals, test suite runs on every commit). This is not a UX choice; it is defense in depth against the single highest-risk failure mode of procurement AI: the agent awarding a tender without a human in the loop.
+The architectural rule is enforced at three layers: a SQL `CHECK + trigger`, an MCP tool that refuses agent principals, and focused tests covering both boundaries. This is defense in depth against the highest-risk failure mode of procurement AI: the agent awarding a tender without a human in the loop.
 
 ## Market
 
@@ -37,8 +37,8 @@ The open source core is the moat — every government deployment and every suppl
 
 ## Traction (real, not curated)
 
-- **Working code.** 5,469 LOC, 33 passing tests, MIT-licensed, on GitHub at https://github.com/Roy-Wanyoike/uwazi.
-- **Real tender shape.** The sample tender is a faithful synthetic of a real Makueni County water reticulation project, including the eight criteria types a real evaluation committee would extract (eligibility, mandatory ISO 9001, technical, financial, compliance, methodology, audited accounts, weights).
+- **Working code.** 42 passing tests, MIT-licensed, on GitHub at https://github.com/Roy-Wanyoike/uwazi.
+- **Honest synthetic scenario.** The sample tender and bids use public-procurement-style fields without claiming to be real submissions or a county deployment.
 - **Real architectural invariant.** The human-in-the-loop rule is enforced at the SQL layer (`CHECK + trigger`) — not as a UX choice. A judge can verify this in 60 seconds by running `sqlite3 uwazi.db "INSERT INTO decisions ... decided_by='agent' ..."` and watching the trigger refuse the insert.
 - **Real ecosystem fit.** Uwazi is MCP-native — any MCP-compatible client (Claude Desktop, an IDE, a custom agent) can drive the workflow. The LLM is provider-agnostic — defaults to Qwen via ModelScope (open-weights), supports OpenAI for side-by-side, supports local Llama via Ollama for fully on-prem.
 

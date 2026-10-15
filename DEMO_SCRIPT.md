@@ -15,7 +15,7 @@ Open the [README](./README.md) and the [SUBMISSION.md](./SUBMISSION.md). Show:
 - **The problem.** Public procurement in African institutions takes days of manual evaluation. A single tender can attract dozens of bids; a procurement officer reads each bid against every criterion, scores it, flags compliance risks, and writes a defensible report — by hand, in a Word document, with no audit trail.
 - **The architectural rule.** *"The agent may propose scores, risk flags, and recommendations. The agent may NEVER record a decision."* Say this out loud. Show the SUBMISSION.md section that restates it. This is the slide that earns the track's "human-in-the-loop" requirement.
 
-The one sentence: "Uwazi is an agentic AI on MCP that turns tender evaluation from a days-long manual exercise into a 30-minute officer-reviewed exercise — with a hard rule that the AI proposes and the officer decides."
+The one sentence: "Uwazi is an evidence-first tender review agent on MCP. It turns tender and bid documents into a cited review pack, then stops: the AI proposes and the committee decides."
 
 ---
 
@@ -205,11 +205,11 @@ Three things the judges should remember:
 
 2. **Provider-agnostic.** The same code runs on Qwen via ModelScope, OpenAI, or a local Llama. Show the [gateway.py](./src/uwazi/gateway.py) — one `complete()` method, no vendor lock-in. The demo ran in STUB mode (no API key needed) but the production gateway calls any OpenAI-compatible endpoint.
 
-3. **The architectural rule.** *"The agent may propose scores, risk flags, and recommendations. The agent may NEVER record a decision."* Say this one more time. It is the slide that earns the track's "AI recommends, a human-in-the-loop decides" requirement. Show the [SUBMISSION.md](./SUBMISSION.md) section that restates it. Show the test that runs on every commit: [tests/test_human_in_the_loop.py](./tests/test_human_in_the_loop.py).
+3. **The architectural rule.** *"The agent may propose scores, risk flags, and recommendations. The agent may NEVER record a decision."* Say this one more time. It addresses the track's "AI recommends, a human-in-the-loop decides" requirement. Show the [SUBMISSION.md](./SUBMISSION.md) section and run [tests/test_human_in_the_loop.py](./tests/test_human_in_the_loop.py) as evidence.
 
 Close with the one-liner:
 
-> "Uwazi turns a days-long manual tender evaluation into a 30-minute officer-reviewed exercise — with a hard architectural rule that the AI proposes and the procurement officer decides, enforced at three layers including the database itself."
+> "Uwazi turns a pile of tender and bid documents into a cited review pack designed for a roughly 20-minute committee review — then stops. The AI proposes and the procurement committee decides."
 
 ---
 

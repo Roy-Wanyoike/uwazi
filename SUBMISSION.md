@@ -11,7 +11,7 @@
 
 ## What this is
 
-Uwazi is an agentic AI on the Model Context Protocol (MCP) that evaluates public tenders for African procurement offices. The agent ingests a tender document and N bid documents, extracts the evaluation criteria, scores every bid against every criterion, flags compliance risks, and produces a ranked report with citations to source paragraphs. A procurement officer then records `accept` / `reject` / `needs-review` decisions — the **only entity that can write the decision field**.
+Uwazi is an evidence-first tender review agent on the Model Context Protocol (MCP). It helps a county evaluation committee turn a tender and its bid documents into a cited review pack: extracted criteria, document checks, bid-by-bid scores, risk flags, and a ranked draft report. A named human then records the decision — the **only entity that can write the decision field**.
 
 For the *Digital economy / Open contracting* theme, Uwazi also exposes a citizen-facing layer: an `open_notices` tool that returns every active tender in plain English (eligibility checklist, mandatory documents, deadlines) — making the procurement pipeline legible to citizens and small suppliers, not just to insiders.
 
@@ -25,30 +25,30 @@ The challenge brief lists four sub-themes under Governance. Uwazi targets **Digi
 
 - **Citizens**: the `open_notices` tool + the `explain_tender_in_plain_language` tool give a citizen a plain-English view of every active tender, with every claim sourced or stamped `ai_generated=True`.
 - **Small suppliers**: the same tools + the eligibility checklist + the mandatory documents list reduce the barrier to entry. A small supplier who has never bid before can see exactly what to prepare.
-- **Procurement officers**: the `evaluate_bids` tool + the `record_officer_decision` tool + the audit trail turn the 26-day evaluation into a 30-minute officer-reviewed exercise.
+- **Procurement committees**: `evaluate_bids`, `record_officer_decision`, and the audit trail target a roughly 20-minute first-pass review pack for the 26-day workflow described in the challenge brief.
 
 ## Requirements checklist
 
 The brief is explicit: *"Projects missing any item in either list are ineligible for prizes."* Here is the checklist.
 
-### What to build (all ✅)
+### What to build
 
 | Requirement | Where |
 |---|---|
 | ✅ Your own MCP server. Three or more different tools, at least one that does something (drafts/files/flags). | `src/uwazi/mcp_server.py` — 10 tools including `ingest_tender` (drafts criteria), `evaluate_bids` (drafts scores + risk flags), `record_officer_decision` (the human gate). |
 | ✅ One MCP server you did not write. One line on why it beats writing it yourself. | `src/uwazi/external_mcp.py` — uses official `mcp-server-fetch`. See ARCHITECTURE.md → "MCP servers built vs borrowed". |
 | ✅ Open-source orchestration. LangGraph, CrewAI, Pydantic AI, smolagents, Letta, Goose, n8n. No closed no-code builders. | `src/uwazi/orchestrator.py` — LangGraph `StateGraph` with 5 nodes + 1 conditional edge. |
-| ✅ One full task on an open-weights model. Procurement data often cannot leave the country. | Default `OPENAI_MODEL=Qwen/Qwen2.5-72B-Instruct` via ModelScope (see `.env.example`). STUB mode for offline demos. Also supports local Llama via Ollama. |
-| ✅ A logged tool call for every action, and a gate on every irreversible one. Inputs, outputs, timestamps, and a named human approving. | The `audit_trail` table captures every tool call + every AI proposal + every human decision. The `decisions` table has a CHECK + trigger (the irreversible gate). |
+| ⚠️ One full task on an open-weights model. Procurement data often cannot leave the country. | The Qwen2.5-72B ModelScope path is configured, but a completed real-model run must be captured before submission. STUB mode is useful for tests; it does not satisfy this requirement. |
+| ⚠️ A logged tool call for every action, and a gate on every irreversible one. Inputs, outputs, timestamps, and a named human approving. | State-changing tools, AI proposals, and human decisions are audited; the decision gate is enforced in the tool and database. Read-only MCP calls are not yet written to a separate global tool-call log. |
 | ✅ New work, built during the submission period. Existing open-source libraries are fine; an existing project resubmitted is not. | All commits in the repository are during the build window. See git log. |
 
-### What to submit (all ✅)
+### What to submit
 
 | Requirement | Where |
 |---|---|
 | ✅ A public code repository with an OSI-approved licence. | MIT — see [LICENSE](./LICENSE). |
 | ✅ A README that gets a stranger running in one command. | `./run-demo.sh` — see [README.md](./README.md). |
-| ✅ A demo video under 3 minutes, uploaded to YouTube or Vimeo and publicly visible. Show an unedited agent run with tool calls on screen. | Script at [scripts/demo-video-script.md](./scripts/demo-video-script.md). Record with OBS / QuickTime. Upload as unlisted. |
+| ⛔ A demo video under 3 minutes, uploaded to YouTube or Vimeo and publicly visible. Show an unedited agent run with tool calls on screen. | The script exists at [scripts/demo-video-script.md](./scripts/demo-video-script.md), but no public video URL is recorded in this repository yet. A script is not a completed submission artifact. |
 | ✅ A text description of what it does, which theme, which institution, which workflow. ~300 words. | [SUBMISSION_TEXT.md](./SUBMISSION_TEXT.md). |
 | ✅ ARCHITECTURE.md — one page. Agent shape, MCP servers built versus borrowed, and why. | [ARCHITECTURE.md](./ARCHITECTURE.md). |
 | ✅ EVALS.md — eight or more test tasks with pass and fail results, plus one failure you did not fix and what you would try next. | [EVALS.md](./EVALS.md) — 42 tests, including negative paths, plus 1 documented unfixed failure. |

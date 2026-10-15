@@ -16,7 +16,7 @@ Open a terminal at the cloned repo. Type:
 
 Say, out loud:
 
-> "Uwazi is an agentic AI on MCP that evaluates public tenders for African procurement offices. The agent proposes; the procurement officer decides. The architectural rule is enforced at the SQL layer. In the next three minutes, I will seed a real-shape tender, run the agent, demonstrate the human-in-the-loop boundary, and open the review UI."
+> "Uwazi is an evidence-first tender review agent on MCP. It turns tender and bid documents into a cited review pack, then stops: the agent proposes and the procurement committee decides. In the next three minutes, I will run the agent on a synthetic tender scenario, show its tool boundary, and prove the human gate."
 
 ---
 
@@ -38,7 +38,7 @@ The `run-demo.sh` script outputs:
   AI has proposed. The procurement officer must finalize.
 ```
 
-(If you have a real Qwen / OpenAI key, the scores will be non-zero — show that. If not, the STUB mode is fine and you say so.)
+The submitted recording must use the configured open-weights Qwen path. STUB mode is a developer fallback and does not satisfy the challenge requirement for one full task on an open-weights model. Keep a separate offline recording only as a contingency.
 
 Narrate while it runs:
 
@@ -127,7 +127,7 @@ Cut.
 
 - A clean clone of the repo on a fresh machine (to show `./run-demo.sh` actually works cold).
 - Python 3.11+ installed.
-- An OPENAI_API_KEY (or Qwen via ModelScope) IF you want non-stub scores. Otherwise STUB mode is fine — say so in the narration.
+- A working Qwen/ModelScope credential for the required open-weights run. Verify it before recording and never expose the credential on screen.
 - OBS / QuickTime / ScreenFlow set to record the full screen, 1080p, system audio + microphone.
 
 ## What the video must show, per the brief

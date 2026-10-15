@@ -2,11 +2,11 @@
 
 # Uwazi
 
-### Open contracting intelligence for African procurement.
+### Evidence-first tender review for African procurement teams.
 
-**An agentic AI on MCP that evaluates public tenders in 30 minutes — with a hard rule that the AI proposes and the procurement officer decides.**
+**Uwazi turns tender and bid documents into a cited review pack designed for a roughly 20-minute committee review. It never awards the tender: the AI proposes and the procurement committee decides.**
 
-Built for the [Agentic AI for Africa Innovation Challenge](https://agentic-africa-challenge.lovable.app/) — Governance track, Bid Box Challenge, *Digital economy / Open contracting* theme.
+Built for the [Agentic AI for Africa Innovation Challenge — Governance track](https://agentic-africa-challenge.lovable.app/tracks/governance), Bid Box Challenge, *Digital economy / Open contracting* theme.
 
 [![License](https://img.shields.io/badge/license-MIT-blue)]()
 [![Tests](https://img.shields.io/badge/tests-42%20PASS-brightgreen)]()
@@ -27,11 +27,24 @@ cd uwazi
 ./run-demo.sh
 ```
 
-That's it. The script creates a venv, installs Uwazi, seeds a real-shape Makueni County water tender + 3 bids, runs the LangGraph agent, demonstrates the human-in-the-loop boundary, and opens the procurement officer review UI at http://localhost:8000.
+That's it. The script creates a venv, installs Uwazi, seeds a synthetic Makueni County water-procurement scenario with three bids, runs the LangGraph agent, demonstrates the human-in-the-loop boundary, and opens the review UI at http://localhost:8000.
+
+## The idea in 60 seconds
+
+| | Uwazi |
+|---|---|
+| **Primary user** | A county tender evaluation committee preparing its review file. |
+| **Job to be done** | Check mandatory documents, compare bids criterion by criterion, surface risks, and assemble a report that can answer “where did this finding come from?” |
+| **Input** | A tender document and the bid documents supplied to the committee. |
+| **Output** | A ranked **draft** review pack with paragraph-level citations, risk flags, cost metadata, and an audit trail. |
+| **Hard boundary** | Uwazi cannot award, accept, or reject a tender. A named human records the decision. |
+| **Open-contracting layer** | Citizens and small suppliers get plain-language notices, eligibility requirements, and mandatory-document checklists. |
+
+This is not a chatbot and it is not an autonomous procurement officer. It is the evidence-preparation layer between a pile of tender documents and the committee's legal decision.
 
 ## What Uwazi does
 
-A procurement office receives a tender and N bids. Today the evaluation is a 26-day manual exercise — sorting bids, ticking off documents, checking each bidder, comparing prices, writing the report. Uwazi turns it into a 30-minute officer-reviewed exercise, with a hard rule: **the agent prepares the file, it never awards the tender.**
+A procurement office receives a tender and N bids. The challenge brief describes this as 26 days of committee work: sorting bids, ticking off documents, checking each bidder, comparing prices, and writing the report. Uwazi targets a roughly 20-minute first-pass review pack, with a hard rule: **the agent prepares the file; it never awards the tender.**
 
 The workflow:
 
@@ -53,6 +66,10 @@ For the *Digital economy / Open contracting* theme, Uwazi also exposes:
 - **`explain_tender_in_plain_language`** — an AI-generated plain-language summary for a small supplier, citizen, or journalist. Every claim cites a paragraph. Stamped `ai_generated=True`.
 - **`fetch_tender_notice`** — pulls a tender notice from a public procurement portal URL via the **official `mcp-server-fetch` MCP server** (a server Uwazi did not write).
 
+### Data boundary
+
+Public contracting portals publish notices and awards, but generally not the confidential bid documents needed for bid evaluation. Uwazi therefore uses public-style notice fields plus synthetic tender and bid documents. The prototype demonstrates the evaluation workflow without claiming that its sample bids are real or that Makueni County has endorsed the project.
+
 ## The architectural rule (the most important sentence in this README)
 
 > **The agent may propose scores, risk flags, and recommendations. The agent may NEVER record a decision.**
@@ -65,7 +82,7 @@ Enforced at three layers — see [ARCHITECTURE.md](./ARCHITECTURE.md):
    # → Parse error: agent may not record decisions — human-in-the-loop rule (ARCHITECTURE.md §5)
    ```
 2. **MCP tool** — `record_officer_decision` refuses any request where `principal_kind='agent'`. Verified by `tests/test_human_in_the_loop.py`.
-3. **Process** — the test suite runs on every commit.
+3. **Verification** — focused tests exercise both the tool-layer refusal and the database constraint.
 
 ## Tech stack
 
@@ -170,6 +187,9 @@ python -m uwazi.cli mcp      # stdio MCP server
 
 The brief rewards honesty about what's unfinished. Here's the list:
 
+- **The required public three-minute video is not yet linked.** A recording script exists, but a script is not a submission artifact.
+- **A full real-model run still needs to be captured.** The Qwen/ModelScope path is configured; automated tests use deterministic STUB mode, which does not satisfy the open-weights requirement by itself.
+- **Read-only MCP calls do not yet have a global tool-call log.** State changes, AI proposals, and human decisions are audited. Complete input/output logging for read-only calls remains work.
 - **Run-to-run variance on the real open-weights model is not measured.** STUB mode is deterministic; the real Qwen endpoint should be near-deterministic at `temperature=0.0` but I have not measured σ per criterion. See [EVALS.md](./EVALS.md) — this is the one failure I did not fix, with a concrete next-step plan.
 - **LangGraph checkpoint resume is not yet wired into the UI.** The graph is compiled with `MemorySaver`, so an interrupted evaluation can in principle be resumed, but the review UI does not yet expose the resume button.
 - **PDF ingestion is tested only via the Markdown path.** `pdf.py` supports PDFs via `pdfplumber`, but the test suite covers Markdown only. Committing a binary PDF would bloat the repo. To verify manually: `python -c "from uwazi.pdf import ingest_pdf; print(len(ingest_pdf('/path/to/real.pdf')))"`.

@@ -4,7 +4,7 @@ These tests verify the architectural rule from ARCHITECTURE.md §5:
 the agent may NEVER record a decision. Enforced at three layers:
   1. SQL — CHECK constraint + BEFORE INSERT trigger
   2. Tool layer — `record_officer_decision` refuses agent principals
-  3. Process — this test suite runs on every commit
+  3. Verification — focused tests cover both enforcement layers
 """
 
 from __future__ import annotations
