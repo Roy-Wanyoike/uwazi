@@ -33,12 +33,17 @@ async function getAuditTrail(tenderId: string): Promise<AuditTrail> {
   // To see the full audit trail (incl. AI proposals), call:
   //   python -m uwazi.cli audit --tender-id <id>
   // Use the absolute URL on the server (UWAZI_API_URL binding on Vercel,
-  // or localhost fallback in dev).
-  const base =
+  // or VERCEL_URL fallback, or localhost in dev).
+  const bound = process.env.UWAZI_API_URL;
+  const host =
     typeof window === "undefined"
-      ? `${(process.env.UWAZI_API_URL ?? "http://localhost:8000").replace(/\/$/, "")}/api/v1`
+      ? bound
+        ? `${bound.replace(/\/$/, "")}/api/v1`
+        : process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}/api/v1`
+        : "http://localhost:8000/api/v1"
       : "/api/v1";
-  const res = await fetch(`${base}/tenders/${tenderId}`, {
+  const res = await fetch(`${host}/tenders/${tenderId}`, {
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
