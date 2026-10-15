@@ -70,6 +70,14 @@ where = ["src"]
 [tool.setuptools.package-data]
 bidbox = ["py.typed", "web/*.html"]
 
+# Vercel — FastAPI entrypoint hint.
+# Vercel's framework detector looks for main.py / app.py / index.py /
+# server.py / wsgi.py / asgi.py at the service root. BidBox's FastAPI
+# app lives at src/bidbox/api.py (variable: app). This hint tells Vercel
+# where to find it.
+[tool.vercel]
+entrypoint = "src.bidbox.api:app"
+
 # ───────────────────────────────────────────────────────────
 # Ruff — linter + formatter
 # ───────────────────────────────────────────────────────────

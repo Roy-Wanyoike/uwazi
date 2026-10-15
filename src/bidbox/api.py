@@ -39,8 +39,48 @@ app = FastAPI(
 
 @app.get("/", response_class=HTMLResponse)
 async def index() -> str:
-    """The single-page review UI — served from web/index.html."""
+    """The single-page review UI — served from web/index.html.
+    On Vercel this route is shadowed by the Next.js frontend; the SPA
+    is the local-dev fallback only."""
     return (WEB_DIR / "index.html").read_text(encoding="utf-8")
+
+
+@app.get("/api/v1/open_notices")
+async def open_notices_endpoint(country_code: str = "KE") -> dict:
+    """Proxy to the MCP `open_notices` tool — so the Next.js frontend
+    can call it via the FastAPI service without speaking MCP.
+
+    Returns FACTS only (no AI inferences). Every claim is sourced from
+    the stored tender + criteria."""
+    from .db import get_db
+    from .models import CriterionCategory
+    db = get_db()
+    tenders = [t for t in db.list_tenders() if t.country_code == country_code]
+    notices = []
+    for t in tenders:
+        criteria = db.list_criteria(t.id)
+        eligibility = [c for c in criteria if c.category == CriterionCategory.ELIGIBILITY]
+        mandatory = [c for c in criteria if c.mandatory]
+        notices.append({
+            "tender_id": t.id,
+            "title": t.title,
+            "issuer": t.issuer,
+            "country_code": t.country_code,
+            "ingested_at": t.ingested_at.isoformat(),
+            "criteria_count": len(criteria),
+            "eligibility_checklist": [
+                {"criterion": c.name, "description": c.description} for c in eligibility
+            ],
+            "mandatory_documents": [
+                {"document": c.name, "description": c.description} for c in mandatory
+            ],
+            "apply_via": f"Call `ingest_bid` with tender_id={t.id} once you have prepared the mandatory documents.",
+        })
+    return {
+        "country_code": country_code,
+        "notices": notices,
+        "note": "This is the citizen-facing layer — every claim here is FACT (not AI-generated).",
+    }
 
 
 # ---------------------------------------------------------------------------
