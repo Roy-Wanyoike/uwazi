@@ -2,6 +2,110 @@
 
 > Required by the challenge brief: *"ARCHITECTURE.md — one page. Agent shape, MCP servers built versus borrowed, and why."*
 
+## System architecture
+
+The diagram below shows every component — agents, LLMs, MCP client/server, MCP tools, external APIs, data sources, the human-in-the-loop gate, and the overall data flow.
+
+```mermaid
+flowchart TB
+    %% ============ Users ============
+    subgraph Users[" Users "]
+        Officer["Procurement Officer<br/>reviews ranked report,<br/>records decision (HUMAN-ONLY)"]
+        Citizen["Citizen / Small Supplier<br/>reads open notices,<br/>plain-language summaries"]
+    end
+
+    %% ============ Vercel deployment ============
+    subgraph Vercel[" Vercel deployment (services pattern) "]
+        direction TB
+
+        Web["Next.js 16 web service<br/>apps/web/<br/>──────<br/>Landing page<br/>/tenders list + detail<br/>/notices (citizen-facing)<br/>/audit/[id]"]
+
+        API["FastAPI api service<br/>src/uwazi/api.py<br/>──────<br/>Lifespan auto-seed<br/>/api/v1/* REST endpoints<br/>Hosts the MCP server"]
+
+        subgraph MCPLayer[" Uwazi MCP server (built — FastMCP, 10 tools) "]
+            Tools["list_tenders · ingest_tender · ingest_bid<br/>evaluate_bids · get_report · get_audit_trail<br/>open_notices · explain_tender_in_plain_language<br/>fetch_tender_notice · record_officer_decision [HUMAN-ONLY]"]
+        end
+
+        subgraph AgentLayer[" LangGraph orchestrator (5-node StateGraph) "]
+            direction LR
+            N1["1. extract_criteria"]
+            N2["2. analyze_bids"]
+            N3["3. score_bids"]
+            N4["4. flag_risks"]
+            N5["5. compose_report"]
+            N1 --> N2 --> N3 --> N4 --> N5
+        end
+
+        subgraph SubAgents[" 4 single-purpose agents "]
+            direction TB
+            A1["ExtractorAgent"]
+            A2["BidAnalyzerAgent"]
+            A3["ScorerAgent"]
+            A4["RiskAgent"]
+        end
+
+        Gateway["LLM Gateway<br/>(provider-agnostic,<br/>OpenAI-compatible)"]
+    end
+
+    %% ============ External services ============
+    subgraph External[" External services "]
+        direction TB
+        FetchServer["Official mcp-server-fetch<br/>(borrowed — NOT written by us)<br/>──────<br/>HTTP redirects, gzip, charset,<br/>robots.txt, SSRF protection"]
+        Qwen["Qwen2.5-72B-Instruct<br/>via ModelScope<br/>(open-weights model)"]
+        Portal["Public procurement<br/>portal URLs<br/>(e.g. Kenya PPIP)"]
+    end
+
+    %% ============ Data source ============
+    subgraph Data[" Neon Postgres "]
+        direction TB
+        Tables["11 tables:<br/>tenders · bids · documents<br/>criteria · responses · scores<br/>risk_flags · reports<br/>decisions · audit_trail"]
+        Trigger["SQL TRIGGER<br/>CHECK + BEFORE INSERT<br/>on decisions<br/>──────<br/>REFUSES any insert where<br/>decided_by = 'agent'<br/>(enforced at 3 layers)"]
+    end
+
+    %% ============ Data flow ============
+    Officer -. reads .-> Web
+    Officer -. posts decision .-> Web
+    Officer -. posts decision .-> API
+    Citizen -. reads .-> Web
+
+    Web ==>|"UWAZI_API_URL binding<br/>(Vercel services)"| API
+
+    API --> MCPLayer
+    MCPLayer ==>|"evaluate_bids tool"| AgentLayer
+    AgentLayer --> SubAgents
+    SubAgents --> Gateway
+    Gateway ==>|"OpenAI-compatible<br/>chat/completions"| Qwen
+
+    MCPLayer -->|"fetch_tender_notice tool"| FetchServer
+    FetchServer -. retrieves .-> Portal
+
+    API ==>|"psycopg2<br/>(dual-backend SQLite / Postgres)"| Data
+    API -. logs every tool call +<br/>AI proposal + human decision .-> Data
+
+    %% The human-in-the-loop gate
+    Trigger -. blocks agent-originated<br/>decision writes .-> API
+
+    %% Styling — low-saturation palette per charts skill
+    classDef external fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#92400e
+    classDef gate fill:#fee2e2,stroke:#dc2626,stroke-width:3px,color:#991b1b
+    classDef llm fill:#f3e8ff,stroke:#9333ea,stroke-width:2px,color:#6b21a8
+    classDef agent fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e40af
+    classDef data fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#166534
+
+    class FetchServer,Portal external
+    class Trigger gate
+    class Qwen,Gateway llm
+    class N1,N2,N3,N4,N5,A1,A2,A3,A4 agent
+    class Tables,Data data
+```
+
+**Reading the diagram:**
+
+- **Solid arrows (`-->`)** are tool calls and synchronous data flow.
+- **Thick arrows (`==>`)** are the primary evaluation path — what runs when the procurement officer clicks "Run agentic evaluation".
+- **Dotted arrows (`-.->`)** are human actions (reads, posts decisions) and the audit log (every state change recorded).
+- **Red trigger (`Trigger`)** is the architectural rule enforced at the SQL layer — the agent can never record a decision.
+
 ## Agent shape
 
 Uwazi is a LangGraph state machine with 5 nodes and 4 conditional edges. The agent plans, calls tools, recovers from failure, and stops at a hard human-in-the-loop gate.

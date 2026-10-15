@@ -29,6 +29,71 @@ cd uwazi
 
 That's it. The script creates a venv, installs Uwazi, seeds a synthetic Makueni County water-procurement scenario with three bids, runs the LangGraph agent, demonstrates the human-in-the-loop boundary, and opens the review UI at http://localhost:8000.
 
+## Architecture
+
+The system in one diagram. (Full architectural contract in [ARCHITECTURE.md](./ARCHITECTURE.md).)
+
+```mermaid
+flowchart TB
+    subgraph Users[" Users "]
+        Officer["Procurement Officer<br/>reviews report, records decision<br/>(HUMAN-ONLY)"]
+        Citizen["Citizen / Small Supplier<br/>reads open notices,<br/>plain-language summaries"]
+    end
+
+    subgraph Vercel[" Vercel deployment (services pattern) "]
+        direction TB
+        Web["Next.js 16 web service<br/>/tenders · /notices · /audit"]
+        API["FastAPI api service<br/>lifespan auto-seed<br/>/api/v1/* + MCP server"]
+
+        subgraph MCPLayer[" Uwazi MCP server (built — 10 tools) "]
+            Tools["list_tenders · ingest_tender · ingest_bid · evaluate_bids<br/>get_report · get_audit_trail · open_notices<br/>explain_tender_in_plain_language · fetch_tender_notice<br/>record_officer_decision [HUMAN-ONLY]"]
+        end
+
+        subgraph AgentLayer[" LangGraph orchestrator (5 nodes) "]
+            direction LR
+            N1["extract_criteria"] --> N2["analyze_bids"] --> N3["score_bids"] --> N4["flag_risks"] --> N5["compose_report"]
+        end
+
+        SubAgents["4 single-purpose agents<br/>Extractor · BidAnalyzer · Scorer · Risk"]
+        Gateway["LLM Gateway<br/>(provider-agnostic)"]
+    end
+
+    subgraph External[" External services "]
+        FetchServer["mcp-server-fetch<br/>(borrowed — NOT ours)"]
+        Qwen["Qwen2.5-72B-Instruct<br/>via ModelScope<br/>(open-weights)"]
+        Portal["Public procurement<br/>portal URLs"]
+    end
+
+    subgraph Data[" Neon Postgres "]
+        Tables["11 tables<br/>tenders · bids · documents · criteria<br/>scores · risk_flags · reports<br/>decisions · audit_trail"]
+        Trigger["SQL TRIGGER<br/>REFUSES agent-originated<br/>decision writes"]
+    end
+
+    Officer -. reads / decides .-> Web
+    Citizen -. reads .-> Web
+    Web ==>|"UWAZI_API_URL binding"| API
+    API --> MCPLayer
+    MCPLayer ==>|"evaluate_bids"| AgentLayer
+    AgentLayer --> SubAgents --> Gateway
+    Gateway ==> Qwen
+    MCPLayer -->|"fetch_tender_notice"| FetchServer
+    FetchServer -. retrieves .-> Portal
+    API ==> Data
+    API -. logs every action .-> Data
+    Trigger -. blocks agent .-> API
+
+    classDef gate fill:#fee2e2,stroke:#dc2626,stroke-width:3px,color:#991b1b
+    class Trigger gate
+    classDef external fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#92400e
+    class FetchServer,Portal,Qwen external
+    classDef llm fill:#f3e8ff,stroke:#9333ea,stroke-width:2px,color:#6b21a8
+    class Qwen,Gateway,SubAgents llm
+    classDef agent fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#1e40af
+    class N1,N2,N3,N4,N5 agent
+```
+
+**The architectural rule (red trigger above):** the agent may propose scores, risk flags, and recommendations. The agent may **never** record a decision. Enforced at the SQL layer (`CHECK + BEFORE INSERT` trigger), the MCP tool layer (`record_officer_decision` refuses agent principals), and the test suite.
+
 ## The idea in 60 seconds
 
 | | Uwazi |
