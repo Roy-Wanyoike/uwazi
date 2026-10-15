@@ -106,29 +106,46 @@ TENDERS = [
 
 
 def _seed_if_empty() -> dict[str, Any]:
-    """Seed all 5 sample tenders + 15 bids if the DB has no tenders.
+    """Seed any missing sample tenders + their bids.
+
+    This is more nuanced than 'seed if empty': it compares the list of
+    expected sample tenders to what's actually in the DB and ingests
+    only the missing ones. So:
+      - On a fresh cold start with empty DB → seeds all 5 tenders × 3 bids.
+      - On a cold start where the DB has the old Makueni tender only
+        (from a previous deploy) → ingests the 4 new tenders + their
+        bids WITHOUT wiping the existing data.
+      - On a cold start where the DB already has all 5 → skips entirely.
 
     Returns a summary dict — useful for the /admin/reseed endpoint.
     """
     db = get_db()
-    existing = db.list_tenders()
-    if existing:
-        return {
-            "already_seeded": True,
-            "tender_count": len(existing),
-            "skipped": True,
-        }
+    existing_ids = {t.id for t in db.list_tenders()}
 
     if not SAMPLES_DIR.exists():
         return {
-            "already_seeded": False,
+            "already_seeded": len(existing_ids) > 0,
+            "tender_count": len(existing_ids),
             "error": f"samples directory not found at {SAMPLES_DIR}",
+            "skipped": True,
+        }
+
+    # Build the list of tenders that need to be seeded (missing from DB).
+    missing = [
+        (tender_id, title, issuer, tender_path, bids)
+        for tender_id, title, issuer, tender_path, bids in TENDERS
+        if tender_id not in existing_ids
+    ]
+    if not missing:
+        return {
+            "already_seeded": True,
+            "tender_count": len(existing_ids),
             "skipped": True,
         }
 
     tender_count = 0
     bid_count = 0
-    for tender_id, title, issuer, tender_path, bids in TENDERS:
+    for tender_id, title, issuer, tender_path, bids in missing:
         if not tender_path.exists():
             continue
         tender = Tender(
@@ -172,6 +189,8 @@ def _seed_if_empty() -> dict[str, Any]:
         "tender_count": tender_count,
         "bid_count": bid_count,
         "skipped": False,
+        "previously_existing_tenders": len(existing_ids),
+        "total_tenders_after_seed": len(existing_ids) + tender_count,
     }
 
 
