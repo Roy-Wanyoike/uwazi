@@ -19,6 +19,14 @@ Built for the [Agentic AI for Africa Innovation Challenge — Governance track](
 
 ---
 
+## Demo video
+
+A 30-second walkthrough of the deployed platform running end-to-end against a Neon Postgres database on Vercel. The video lives in [`video/uwazi-demo.mp4`](./video/uwazi-demo.mp4) (590 KB, H.264, no audio) — see [`video/README.md`](./video/README.md) for the scene-by-scene breakdown.
+
+Live deployment: **https://uwazi-rose.vercel.app**
+
+---
+
 ## Problem statement
 
 Public procurement in African institutions is slow, opaque, and expensive. The challenge brief itself states the number: a single tender evaluation takes **26 days of committee work today** — sorting bids, ticking off mandatory documents, checking each bidder, comparing prices, and writing the report. Across the continent, that is billions of USD in deferred decisions, locked-up supplier cash, and lost opportunities for small suppliers who cannot navigate the bureaucracy.
