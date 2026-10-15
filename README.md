@@ -1,69 +1,143 @@
+<div align="center">
+
 # BidBox
 
-### An agentic AI on MCP that evaluates public tenders for African procurement offices.
+### Open contracting intelligence for African procurement.
 
-**AI recommends. The procurement officer decides.**
+**An agentic AI on MCP that evaluates public tenders in 30 minutes — with a hard rule that the AI proposes and the procurement officer decides.**
 
-Built for the [Agentic AI for Africa Innovation Challenge](https://agentic-africa-challenge.lovable.app/) — Bid Box track. Five days to build, twenty minutes live in your own code.
+Built for the [Agentic AI for Africa Innovation Challenge](https://agentic-africa-challenge.lovable.app/) — Governance track, Bid Box Challenge, *Digital economy / Open contracting* theme.
+
+[![License](https://img.shields.io/badge/license-MIT-blue)]()
+[![Tests](https://img.shields.io/badge/tests-33%20PASS-brightgreen)]()
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)]()
+[![MCP](https://img.shields.io/badge/MCP-10%20tools-teal)]()
+[![Orchestration](https://img.shields.io/badge/orchestration-LangGraph-orange)]()
+[![Model](https://img.shields.io/badge/model-Qwen2.5--72B-purple)]()
+
+</div>
 
 ---
 
+## One command
+
+```bash
+git clone https://github.com/Roy-Wanyoike/bidbox.git
+cd bidbox
+./run-demo.sh
+```
+
+That's it. The script creates a venv, installs BidBox, seeds a real-shape Makueni County water tender + 3 bids, runs the LangGraph agent, demonstrates the human-in-the-loop boundary, and opens the procurement officer review UI at http://localhost:8000.
+
 ## What BidBox does
 
-A procurement office receives a tender document and N bid documents. Today, evaluation is a days-long manual exercise: extract the criteria from the tender, score every bid against every criterion, flag compliance risks, rank the bids, write a defensible report. By the time the report is signed, the officer can barely remember why Bid 3 scored 7/10 on "technical capacity."
-
-BidBox is an agentic AI on the Model Context Protocol (MCP) that turns this into a thirty-minute exercise — with a hard human-in-the-loop rule: the agent proposes, the procurement officer disposes.
+A procurement office receives a tender and N bids. Today the evaluation is a 26-day manual exercise — sorting bids, ticking off documents, checking each bidder, comparing prices, writing the report. BidBox turns it into a 30-minute officer-reviewed exercise, with a hard rule: **the agent prepares the file, it never awards the tender.**
 
 The workflow:
 
-1. `ingest_tender` — the agent reads the tender document (PDF or Markdown), extracts the evaluation criteria (eligibility, technical, financial, mandatory documents) with citations back to specific paragraphs.
-2. `ingest_bid` — the agent ingests each bid document against the tender.
-3. `evaluate_bids` — the orchestrator agent runs a four-stage workflow per bid:
-   - **BidAnalyzerAgent** — extracts the bid's responses to each criterion, with citations to specific bid paragraphs.
-   - **ScorerAgent** — scores each (bid, criterion) pair on a 0-10 rubric, with citations to both the tender passage that defines the criterion and the bid passage that responds to it.
-   - **RiskAgent** — flags compliance risks per bid (missing mandatory documents, suspiciously low financials, late submissions, deviation from the rubric).
-   - **OrchestratorAgent** — composes a ranked report with citations, scores, risk flags, and a recommendation per bid.
-4. `get_report` — the procurement officer opens the report. Every score, every flag, every recommendation is one click away from the source paragraph it was derived from.
-5. `record_officer_decision` — the procurement officer records `accept` / `reject` / `needs-review` decisions per bid, with a rationale. **Only humans can call this tool.** The agent never writes to the decision table — there is a SQL trigger that refuses inserts with `decided_by='agent'`.
-6. `get_audit_trail` — full audit trail of AI proposals + human decisions, exportable as a signed PDF for the procurement archive.
+1. **`ingest_tender`** — the agent reads the tender (PDF or Markdown), extracts the evaluation criteria with citations to specific paragraphs.
+2. **`ingest_bid`** — the agent ingests each bid document against the tender.
+3. **`evaluate_bids`** — a five-node LangGraph workflow runs per bid:
+   - **ExtractorAgent** → criteria with citations
+   - **BidAnalyzerAgent** → responses per criterion with citations
+   - **ScorerAgent** → 0–10 score per (bid, criterion) pair with citations
+   - **RiskAgent** → compliance risks per bid with citations
+   - **OrchestratorAgent** → ranked report with per-bid recommendation
+4. **`get_report`** — the procurement officer opens the report. Every score is one click from the source paragraph it was derived from.
+5. **`record_officer_decision`** — the officer records `accept` / `reject` / `needs_review` per bid. **HUMAN-ONLY.** The agent never writes the decision — there is a SQL `CHECK + trigger` that refuses any agent-originated insert.
+6. **`get_audit_trail`** — full audit trail of AI proposals + human decisions, exportable as a signed PDF for the procurement archive.
 
-## Why MCP
+For the *Digital economy / Open contracting* theme, BidBox also exposes:
 
-BidBox is MCP-native. Every capability — ingesting documents, extracting criteria, scoring bids, recording decisions — is exposed as an MCP tool. The orchestrator agent is an MCP client that calls the tools through the protocol. This means:
+- **`open_notices`** — a citizen-facing tool that returns every active tender in plain English: eligibility checklist, mandatory documents, deadlines. No legalese, no AI inferences — just structured facts.
+- **`explain_tender_in_plain_language`** — an AI-generated plain-language summary for a small supplier, citizen, or journalist. Every claim cites a paragraph. Stamped `ai_generated=True`.
+- **`fetch_tender_notice`** — pulls a tender notice from a public procurement portal URL via the **official `mcp-server-fetch` MCP server** (a server BidBox did not write).
 
-- Any MCP-compatible client (Claude Desktop, your IDE, a custom agent) can drive BidBox.
-- The procurement office can swap the LLM (Qwen, GPT, Claude, local Llama) without touching the agent code.
-- The human-in-the-loop boundary is enforced at the MCP tool layer: `record_officer_decision` is the only tool that writes to the decision table, and it requires a human principal.
+## The architectural rule (the most important sentence in this README)
 
-## The architectural rule
+> **The agent may propose scores, risk flags, and recommendations. The agent may NEVER record a decision.**
 
-> **The agent may propose scores, risk flags, and recommendations. The agent may NEVER record a decision.** Every AI output is stamped `ai_generated=True`; the decision table has a SQL trigger that refuses any insert with `decided_by='agent'`.
+Enforced at three layers — see [ARCHITECTURE.md](./ARCHITECTURE.md):
 
-This rule is enforced at three layers:
-- **Schema**: the `decisions` table has a `CHECK (decided_by <> 'agent')` constraint.
-- **Code**: the Python agent service has no write credentials on the `decisions` table; it calls the Go-free Python `record_officer_decision` tool via MCP, which validates the principal.
-- **Process**: every commit that touches the orchestrator or the MCP server runs the test that the agent cannot record a decision.
+1. **SQL** — `CHECK (decided_by <> 'agent')` + `BEFORE INSERT` trigger on `decisions`. A judge can verify this in 60 seconds:
+   ```bash
+   sqlite3 bidbox.db "INSERT INTO decisions (id, tender_id, bid_id, decision, rationale, decided_by, decided_at) VALUES ('hack', 't', 'b', 'accept', 'agent hack', 'agent', datetime('now'));"
+   # → Parse error: agent may not record decisions — human-in-the-loop rule (ARCHITECTURE.md §5)
+   ```
+2. **MCP tool** — `record_officer_decision` refuses any request where `principal_kind='agent'`. Verified by `tests/test_human_in_the_loop.py`.
+3. **Process** — the test suite runs on every commit.
 
 ## Tech stack
 
-| Layer | Technology |
-|---|---|
-| MCP server | Python 3.12, official `mcp` SDK (FastMCP) |
-| Agentic workflow | Python — OrchestratorAgent + 4 single-purpose agents |
-| Document ingestion | `pdfplumber` (PDF) + Markdown reader — both with paragraph-level citation tracking |
-| LLM gateway | `openai` SDK pointed at any OpenAI-compatible endpoint (Qwen via ModelScope, OpenAI, local Llama) |
-| Storage | SQLite (zero-config) — portable to Postgres for production |
-| Review UI | FastAPI + a single HTML page — procurement officer review screen |
-| Tests | `pytest` + `pytest-asyncio` |
+| Layer | Technology | Why |
+|---|---|---|
+| **MCP server** (built) | `mcp` Python SDK (FastMCP), 10 tools | The protocol surface for the entire workflow. |
+| **MCP server** (borrowed) | Official `mcp-server-fetch` | Handles HTTP redirects, gzip, charset detection, HTML stripping, robots.txt, SSRF protection. ~500 LOC saved. |
+| **Orchestration** | LangGraph (`StateGraph` + `MemorySaver`) | Open-source, Apache 2.0. The de-facto orchestrator for agent workflows with named-tool calls. |
+| **LLM gateway** | `openai` SDK pointed at any OpenAI-compatible endpoint | Default: **Qwen2.5-72B-Instruct via ModelScope** (open-weights). Also supports OpenAI for side-by-side and local Llama via Ollama for fully on-prem. |
+| **Document ingestion** | `pdfplumber` (PDF) + Markdown reader | Paragraph-level citation tracking — works for both PDFs (page-based) and Markdown (no pages). |
+| **Storage** | SQLite (portable to Postgres) | Zero-config for the demo; portable for production. |
+| **Review UI** | FastAPI + single HTML page | The procurement officer review screen. |
+| **Tests** | `pytest` + `pytest-asyncio` | 33 tests, ~1.1s. |
 
-## Quick start
+## Project structure
+
+```
+bidbox/
+├── README.md                  ← you are here
+├── ARCHITECTURE.md            ← one-page architectural contract (judge-required)
+├── EVALS.md                   ← 33 tests + 1 known unfixed failure (judge-required)
+├── INVESTORS.md               ← market, business model, traction, roadmap
+├── JUDGE_GUIDE.md             ← walks through every judging criterion
+├── SUBMISSION_TEXT.md         ← 300-word submission text (judge-required)
+├── SUBMISSION.md              ← build-window scope + 5 files to read first
+├── DEMO_SCRIPT.md             ← 20-minute live review walkthrough
+├── run-demo.sh                ← one-command demo
+├── pyproject.toml
+├── .env.example
+├── docs/
+│   └── architecture-deep-dive.md  ← the full ADR + schema contract
+├── src/bidbox/
+│   ├── config.py              ← env-driven settings
+│   ├── models.py              ← Pydantic domain models
+│   ├── db.py                  ← SQLite schema + audit trail + decision CHECK + trigger
+│   ├── pdf.py                 ← PDF + Markdown ingestion, paragraph-level citations
+│   ├── citation.py            ← 5-check citation validator (fails closed)
+│   ├── gateway.py             ← provider-agnostic LLM gateway (STUB mode + real)
+│   ├── prompts.py             ← every system + user prompt in one module
+│   ├── agents.py              ← ExtractorAgent, BidAnalyzerAgent, ScorerAgent, RiskAgent
+│   ├── orchestrator.py        ← LangGraph StateGraph (5 nodes, 1 conditional edge)
+│   ├── external_mcp.py        ← integration with official mcp-server-fetch
+│   ├── mcp_server.py          ← FastMCP server: 10 tools
+│   ├── api.py                 ← FastAPI review UI
+│   └── cli.py                 ← CLI driver
+├── web/index.html             ← procurement officer review screen
+├── samples/
+│   ├── tender-makueni-water.md      ← synthetic tender (real-shape)
+│   ├── tender-makueni-water.ocds.json ← same tender in OCDS (Open Contracting Data Standard)
+│   ├── bid-aquaforce.md             ← clean bid
+│   ├── bid-hydrotech.md             ← missing mandatory ISO 9001 (RiskAgent flag)
+│   └── bid-sahara.md                ← anomalous-low financial (RiskAgent flag)
+├── scripts/
+│   ├── seed.py                ← seeds the sample tender + 3 bids
+│   └── demo-video-script.md   ← 3-minute unedited video script
+└── tests/
+    ├── test_citation.py
+    ├── test_pdf.py
+    ├── test_human_in_the_loop.py
+    └── test_mcp_tools.py
+```
+
+## Quick start (the long version)
+
+If `./run-demo.sh` is too magical, here are the steps it runs:
 
 ```bash
 git clone https://github.com/Roy-Wanyoike/bidbox.git
 cd bidbox
 python -m venv .venv && source .venv/bin/activate
-pip install -e .
-cp .env.example .env             # set OPENAI_API_KEY (or Qwen base URL)
+pip install -e ".[dev]"
+cp .env.example .env   # set OPENAI_API_KEY for real Qwen scores; leave blank for STUB
 
 # 1. Seed the sample tender + 3 bids
 python scripts/seed.py
@@ -71,60 +145,53 @@ python scripts/seed.py
 # 2. Run the agentic evaluation
 python -m bidbox.cli evaluate --tender-id makueni-water-2026
 
-# 3. Open the procurement officer review UI
-uvicorn bidbox.api:app --reload    # → http://localhost:8000
+# 3. Demonstrate the human-in-the-loop boundary
+python -m bidbox.cli demonstrate-human-in-the-loop --tender-id makueni-water-2026
 
-# 4. (Optional) Drive BidBox from any MCP client
-python -m bidbox.mcp_server        # stdio MCP server
+# 4. Open the procurement officer review UI
+python -m bidbox.cli serve    # → http://localhost:8000
+
+# 5. (Optional) Drive BidBox from any MCP client
+python -m bidbox.cli mcp      # stdio MCP server
 ```
 
-## Sample data
+## Documentation (read these in order if you are a judge)
 
-The repo ships a synthetic tender — *Makueni County Water Reticulation Project* — and three synthetic bids (AquaForce, HydroTech, Sahara Civils) crafted to demonstrate the four hard cases:
+1. [ARCHITECTURE.md](./ARCHITECTURE.md) — one page: agent shape, MCP servers built vs borrowed, the human-in-the-loop gate.
+2. [EVALS.md](./EVALS.md) — 33 tests with pass/fail results + one known unfixed failure with next steps.
+3. [JUDGE_GUIDE.md](./JUDGE_GUIDE.md) — walks through every judging criterion, points to exact files / commands.
+4. [SUBMISSION_TEXT.md](./SUBMISSION_TEXT.md) — the 300-word submission text (theme, institution, workflow).
+5. [DEMO_SCRIPT.md](./DEMO_SCRIPT.md) — the 20-minute live review walkthrough.
+6. [INVESTORS.md](./INVESTORS.md) — market size, business model, traction, roadmap.
+7. [SUBMISSION.md](./SUBMISSION.md) — build-window scope + 5 files to read first.
+8. [docs/architecture-deep-dive.md](./docs/architecture-deep-dive.md) — the full ADR + schema contract.
 
-| Bid | What it demonstrates |
-|---|---|
-| AquaForce Ltd | A clean, well-scoring bid. Shows the happy path. |
-| HydroTech Ltd | A bid missing a mandatory document (ISO 9001 certificate). Shows the RiskAgent flagging compliance. |
-| Sahara Civils | A bid with a suspiciously low financial quote (60% of the next-lowest). Shows the RiskAgent flagging anomaly. |
+## What is unfinished (honest list)
 
-The sample is in Markdown (so you can read it on GitHub), but the ingestion pipeline handles PDFs identically — citations are by paragraph index, which works for both.
+The brief rewards honesty about what's unfinished. Here's the list:
 
-## Project structure
+- **Run-to-run variance on the real open-weights model is not measured.** STUB mode is deterministic; the real Qwen endpoint should be near-deterministic at `temperature=0.0` but I have not measured σ per criterion. See [EVALS.md](./EVALS.md) — this is the one failure I did not fix, with a concrete next-step plan.
+- **LangGraph checkpoint resume is not yet wired into the UI.** The graph is compiled with `MemorySaver`, so an interrupted evaluation can in principle be resumed, but the review UI does not yet expose the resume button.
+- **PDF ingestion is tested only via the Markdown path.** `pdf.py` supports PDFs via `pdfplumber`, but the test suite covers Markdown only. Committing a binary PDF would bloat the repo. To verify manually: `python -c "from bidbox.pdf import ingest_pdf; print(len(ingest_pdf('/path/to/real.pdf')))"`.
+- **The external `mcp-server-fetch` is only tested manually.** The test suite verifies the fallback path (server not available → graceful degradation). The happy path (real URL fetch) requires a running subprocess.
+- **I have not yet sat with a real Makueni procurement officer for a day.** The sample tender is shaped after reading publicly-available PPIP notices. The prompts + criteria weights reflect my reading, not a real officer's. With one more week of build time, that conversation is the first thing I would do.
 
-```
-bidbox/
-├── README.md
-├── SUBMISSION.md           # 7-day build window scope + reviewer guide
-├── ARCHITECTURE.md         # canonical architectural contract
-├── DEMO_SCRIPT.md           # 20-minute live review walkthrough
-├── pyproject.toml
-├── .env.example
-├── src/bidbox/
-│   ├── config.py            # env-driven settings
-│   ├── models.py            # Pydantic domain models
-│   ├── db.py                # SQLite + audit trail + decision CHECK constraint
-│   ├── pdf.py               # PDF + Markdown ingestion with citation tracking
-│   ├── citation.py          # citation validator (5 checks, fails closed)
-│   ├── gateway.py           # provider-agnostic LLM gateway
-│   ├── prompts.py           # all system + user prompts in one module
-│   ├── agents.py            # ExtractorAgent, BidAnalyzerAgent, ScorerAgent, RiskAgent
-│   ├── orchestrator.py      # OrchestratorAgent — chains the 4 above via MCP tools
-│   ├── mcp_server.py        # FastMCP server exposing 7 tools
-│   ├── api.py               # FastAPI review UI
-│   └── cli.py               # command-line driver
-├── web/index.html           # procurement officer review screen
-├── samples/                 # synthetic tender + 3 bids (Markdown)
-├── scripts/seed.py          # seeds SQLite with the sample tender + bids
-└── tests/                   # pytest suite
-```
+## The architectural rule, restated one more time
 
-## Documentation
+> **The agent may propose scores, risk flags, and recommendations. The agent may NEVER record a decision.**
 
-- [SUBMISSION.md](./SUBMISSION.md) — what was built in the 7-day window, what to read first
-- [ARCHITECTURE.md](./ARCHITECTURE.md) — the architectural contract (rules + ADRs)
-- [DEMO_SCRIPT.md](./DEMO_SCRIPT.md) — the 20-minute live review script
+If you remember one thing about BidBox, remember this. It is the difference between an agent that *assists* a procurement officer and an agent that *replaces* one. Procurement law across Africa puts the decision with a human committee. BidBox respects that — at the SQL layer.
 
 ## License
 
 MIT. See [LICENSE](./LICENSE).
+
+## Contact
+
+Roy Wanyoike — Nairobi, Kenya. Repository at https://github.com/Roy-Wanyoike/bidbox.
+
+<div align="center">
+
+**AI recommends. The procurement officer decides.**
+
+</div>

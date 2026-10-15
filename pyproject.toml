@@ -26,8 +26,14 @@ classifiers = [
     "Topic :: Office/Business",
 ]
 dependencies = [
-    # MCP — the protocol layer
-    "mcp>=1.0.0,<2.0.0",  # v1 FastMCP API; v2 renamed FastMCP → MCPServer
+    # MCP — the protocol layer (v1 FastMCP API)
+    "mcp>=1.0.0,<2.0.0",
+    # External MCP server we did NOT write — official fetch server
+    "mcp-server-fetch>=0.1.0",
+    # Open-source orchestration — REQUIRED by the challenge brief
+    "langgraph>=0.2.0",
+    "langgraph-checkpoint-sqlite>=2.0.0",
+    "langchain-core>=0.3.0",
     # Web layer (review UI)
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
