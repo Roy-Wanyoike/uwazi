@@ -282,10 +282,8 @@ Uwazi is honest about what's unfinished. The brief rewards honesty about this.
 ```
 uwazi/
 ├── README.md                  ← you are here
-├── ARCHITECTURE.md            ← one-page architectural contract (judge-required)
-├── EVALS.md                   ← 42 tests + 1 known unfixed failure (judge-required)
-├── INVESTORS.md               ← market, business model, traction, roadmap
-├── JUDGE_GUIDE.md             ← walks through every judging criterion
+├── ARCHITECTURE.md            ← one-page architectural contract 
+├── EVALS.md                   ← 42 tests + 1 known unfixed failure
 ├── DEMO_SCRIPT.md             ← 20-minute live review walkthrough
 ├── run-demo.sh                ← one-command demo
 ├── pyproject.toml
