@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   title: "Uwazi — Open Contracting Intelligence for African Procurement",
   description:
     "An agentic AI on MCP that evaluates public tenders in 30 minutes — with a hard rule that the AI proposes and the procurement officer decides.",
+  icons: {
+    icon: "/favicon.svg",
+  },
   openGraph: {
     title: "Uwazi — Open Contracting Intelligence for African Procurement",
     description:
@@ -21,7 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="header">
           <div className="container header-inner">
             <Link href="/" className="brand">
-              <span className="brand-dot" />
+              <img src="/logo.svg" alt="Uwazi" width={28} height={28} style={{ borderRadius: 6 }} />
               Uwazi
             </Link>
             <nav className="nav">

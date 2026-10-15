@@ -1,17 +1,34 @@
 /**
  * API client for the Uwazi backend.
  *
- * On Vercel: UWAZI_API_URL is injected via the `services` binding
- * (see vercel.json — the `web` service binds to the `api` service).
- * On local dev: falls back to http://localhost:8000 (FastAPI dev).
- * The next.config.mjs rewrites /api/* to UWAZI_API_URL so the browser
- * can call the same path on either environment.
+ * Two execution contexts:
+ *
+ * 1. Server-side (Next.js Server Components / Server Actions).
+ *    `window` is undefined; relative URLs fail with
+ *    "Failed to parse URL from /api/v1/...". Use the absolute URL
+ *    from the `UWAZI_API_URL` env var (injected by the Vercel
+ *    services binding on Vercel, or defaulted to localhost for dev).
+ *
+ * 2. Client-side (browser fetches, e.g. inside the audit page's
+ *    client-side `useEffect`-equivalent).
+ *    `window` exists; relative URLs are resolved by the browser.
+ *    Vercel's vercel.json `rewrites` routes `/api/*` to the api service.
  */
 
-const BASE = "/api/v1";
+function getBaseURL(): string {
+  // Server-side: absolute URL from the binding env var.
+  if (typeof window === "undefined") {
+    const bound = process.env.UWAZI_API_URL;
+    if (bound) return `${bound.replace(/\/$/, "")}/api/v1`;
+    // Local dev fallback (server-side).
+    return "http://localhost:8000/api/v1";
+  }
+  // Client-side: relative URL. Vercel's vercel.json rewrites /api/* → api service.
+  return "/api/v1";
+}
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${getBaseURL()}${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });

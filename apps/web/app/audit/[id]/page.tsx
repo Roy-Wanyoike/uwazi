@@ -32,10 +32,15 @@ async function getAuditTrail(tenderId: string): Promise<AuditTrail> {
   // For now, the web UI shows the decisions stored via FastAPI.
   // To see the full audit trail (incl. AI proposals), call:
   //   python -m uwazi.cli audit --tender-id <id>
-  const res = await fetch(
-    `${process.env.UWAZI_API_URL ?? ""}/api/v1/tenders/${tenderId}`,
-    { cache: "no-store" },
-  );
+  // Use the absolute URL on the server (UWAZI_API_URL binding on Vercel,
+  // or localhost fallback in dev).
+  const base =
+    typeof window === "undefined"
+      ? `${(process.env.UWAZI_API_URL ?? "http://localhost:8000").replace(/\/$/, "")}/api/v1`
+      : "/api/v1";
+  const res = await fetch(`${base}/tenders/${tenderId}`, {
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
   return {
