@@ -218,3 +218,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ─── BidBox-specific ─────────────────────────────────
+*.db
+*.db-journal
+bidbox.db
+bidbox-test.db
+data/
+uploads/
+samples/*.pdf
+!samples/.gitkeep

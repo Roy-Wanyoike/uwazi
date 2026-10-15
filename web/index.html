@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BidBox — Procurement Officer Review</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --fg: #0f172a;
+      --muted: #64748b;
+      --accent: #2563eb;
+      --warn: #d97706;
+      --crit: #dc2626;
+      --ok: #16a34a;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      padding: 24px;
+    }
+    header { margin-bottom: 24px; }
+    h1 { font-size: 24px; margin: 0 0 4px 0; }
+    h2 { font-size: 18px; margin: 24px 0 12px; }
+    .sub { color: var(--muted); font-size: 13px; }
+    .grid {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .tender-list { padding: 0; list-style: none; margin: 0; }
+    .tender-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .tender-item:hover { background: #f1f5f9; }
+    .tender-item.active { background: #eff6ff; border-left: 3px solid var(--accent); }
+    .tender-item h3 { margin: 0; font-size: 14px; }
+    .tender-item .meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+    .rank {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: white;
+      text-align: center;
+      line-height: 24px;
+      font-weight: 600;
+      margin-right: 8px;
+      font-size: 12px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .badge-award { background: #dcfce7; color: #166534; }
+    .badge-shortlist { background: #fef3c7; color: #92400e; }
+    .badge-reject { background: #fee2e2; color: #991b1b; }
+    .badge-info { background: #dbeafe; color: #1e40af; }
+    .badge-warning { background: #fef3c7; color: #92400e; }
+    .badge-critical { background: #fee2e2; color: #991b1b; }
+    .badge-ai { background: #f3e8ff; color: #6b21a8; }
+    .bid-card { margin-bottom: 16px; }
+    .bid-card h3 { margin: 0 0 4px; font-size: 16px; }
+    .score-bar { display: flex; gap: 4px; margin: 8px 0; }
+    .score-bar .seg {
+      flex: 1;
+      height: 6px;
+      background: #e2e8f0;
+      border-radius: 3px;
+    }
+    .score-bar .seg.filled { background: var(--accent); }
+    .citation {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: #f8fafc;
+      border-left: 3px solid var(--accent);
+      padding: 8px 12px;
+      margin: 8px 0;
+      color: var(--fg);
+    }
+    .citation .cite-label { color: var(--muted); font-size: 11px; margin-bottom: 2px; }
+    .risk {
+      padding: 8px 12px;
+      margin: 8px 0;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    .risk-critical { background: #fee2e2; border-left: 3px solid var(--crit); }
+    .risk-warning { background: #fef3c7; border-left: 3px solid var(--warn); }
+    .risk-info { background: #dbeafe; border-left: 3px solid var(--accent); }
+    .decide-form { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .decide-form input[type="text"] {
+      flex: 1; min-width: 200px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font: inherit;
+    }
+    button {
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--card);
+      cursor: pointer;
+      font: inherit;
+    }
+    button.primary { background: var(--accent); color: white; border-color: var(--accent); }
+    button.danger { background: var(--crit); color: white; border-color: var(--crit); }
+    button.warn { background: var(--warn); color: white; border-color: var(--warn); }
+    button.ok { background: var(--ok); color: white; border-color: var(--ok); }
+    .rule-banner {
+      background: #f3e8ff;
+      border: 1px solid #d8b4fe;
+      color: #6b21a8;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-bottom: 16px;
+    }
+    .empty { color: var(--muted); font-style: italic; padding: 24px; text-align: center; }
+    details summary { cursor: pointer; color: var(--accent); font-size: 13px; }
+    details[open] summary { margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>BidBox</h1>
+    <div class="sub">Procurement Officer Review — AI recommends, you decide.</div>
+  </header>
+
+  <div class="rule-banner">
+    <strong>Architectural rule:</strong> The agent may propose scores, risk flags, and recommendations.
+    The agent may NEVER record a decision. Enforced at the SQL layer (CHECK + trigger).
+  </div>
+
+  <div class="grid">
+    <!-- Tender list -->
+    <div class="card">
+      <h2>Tenders</h2>
+      <ul id="tender-list" class="tender-list">
+        <li class="empty">Loading…</li>
+      </ul>
+      <details>
+        <summary>Ingest new tender</summary>
+        <form id="ingest-tender-form" style="margin-top:8px;">
+          <input type="text" name="path" placeholder="Path to tender file" style="width:100%; margin-bottom:8px; padding:6px;" />
+          <input type="text" name="title" placeholder="Title (optional)" style="width:100%; margin-bottom:8px; padding:6px;" />
+          <input type="text" name="issuer" placeholder="Issuer" style="width:100%; margin-bottom:8px; padding:6px;" />
+          <button type="submit" class="primary">Ingest tender</button>
+        </form>
+      </details>
+    </div>
+
+    <!-- Detail view -->
+    <div id="detail" class="card">
+      <div class="empty">Select a tender to view its evaluation.</div>
+    </div>
+  </div>
+
+  <script>
+    const API = '/api/v1';
+    let activeTender = null;
+
+    async function loadTenders() {
+      const r = await fetch(`${API}/tenders`);
+      const d = await r.json();
+      const ul = document.getElementById('tender-list');
+      if (!d.tenders || d.tenders.length === 0) {
+        ul.innerHTML = '<li class="empty">No tenders yet. Run <code>python scripts/seed.py</code>.</li>';
+        return;
+      }
+      ul.innerHTML = d.tenders.map(t => `
+        <li class="tender-item${t.id === activeTender ? ' active' : ''}" data-id="${t.id}">
+          <h3>${escapeHtml(t.title)}</h3>
+          <div class="meta">${t.bid_count} bid${t.bid_count === 1 ? '' : 's'} · ${t.issuer} · ${t.country_code}</div>
+        </li>
+      `).join('');
+      ul.querySelectorAll('.tender-item').forEach(li => {
+        li.onclick = () => { activeTender = li.dataset.id; loadTenders(); loadDetail(); };
+      });
+    }
+
+    async function loadDetail() {
+      if (!activeTender) return;
+      const r = await fetch(`${API}/tenders/${activeTender}`);
+      const d = await r.json();
+      const el = document.getElementById('detail');
+
+      if (!d.report) {
+        el.innerHTML = `
+          <h2>${escapeHtml(d.tender.title)}</h2>
+          <div class="sub">${escapeHtml(d.tender.issuer)} · ${d.tender.country_code} · ingested ${d.tender.ingested_at}</div>
+          <p>${d.bids.length} bid${d.bids.length === 1 ? '' : 's'} ingested. No report yet.</p>
+          <button class="primary" id="run-eval">Run agentic evaluation</button>
+        `;
+        document.getElementById('run-eval').onclick = runEvaluation;
+        return;
+      }
+
+      const bids = d.report.bids.map((b, i) => renderBid(b, i, d.decisions)).join('');
+      const auditCount = d.audit_count || 0;
+
+      el.innerHTML = `
+        <h2>${escapeHtml(d.tender.title)}</h2>
+        <div class="sub">
+          ${escapeHtml(d.tender.issuer)} · ${d.tender.country_code} · ingested ${d.tender.ingested_at} ·
+          <span class="badge badge-ai">AI-GENERATED</span> ·
+          ${auditCount} audit entries
+        </div>
+        <p class="sub" style="margin-top:12px;">
+          The agent has proposed. Record <code>accept</code> / <code>reject</code> / <code>needs_review</code> decisions below.
+          The agent cannot record decisions — only you can.
+        </p>
+        ${bids}
+      `;
+
+      // Wire up decision forms
+      el.querySelectorAll('form.decide-form').forEach(f => {
+        f.onsubmit = async (e) => {
+          e.preventDefault();
+          const fd = new FormData(f);
+          const body = {
+            bid_id: f.dataset.bidId,
+            decision: f.dataset.decision,
+            rationale: fd.get('rationale'),
+            principal_id: 'officer-demo',
+            principal_kind: 'human',
+          };
+          const res = await fetch(`${API}/tenders/${activeTender}/decisions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          const result = await res.json();
+          if (res.ok) {
+            alert(`Decision recorded: ${body.decision} on ${body.bid_id}`);
+            loadDetail();
+          } else {
+            alert(`Error: ${result.error || res.statusText}`);
+          }
+        };
+      });
+    }
+
+    function renderBid(b, rank, decisions) {
+      const myDecision = decisions.find(d => d.bid_id === b.bid_id);
+      const decisionHtml = myDecision
+        ? `<div class="badge badge-${myDecision.decision === 'accept' ? 'award' : myDecision.decision === 'reject' ? 'reject' : 'shortlist'}">DECIDED: ${myDecision.decision}</div>`
+        : '';
+
+      const riskHtml = (b.risk_flags || []).map(r => `
+        <div class="risk risk-${r.severity}">
+          <strong>${r.risk_type}</strong> (${r.severity}): ${escapeHtml(r.description)}
+          <div class="citation"><div class="cite-label">Cited paragraph:</div>${escapeHtml(r.citation_paragraph || '')}</div>
+        </div>
+      `).join('');
+
+      const scoresHtml = (b.scores || []).map(s => `
+        <div>
+          <strong>${s.score}/10</strong> — ${escapeHtml(s.rationale || '')}
+          <div class="citation">
+            <div class="cite-label">Tender criterion (cited):</div>${escapeHtml(s.citation_tender_paragraph || '')}
+          </div>
+          <div class="citation">
+            <div class="cite-label">Bid response (cited):</div>${escapeHtml(s.citation_bid_paragraph || '')}
+          </div>
+        </div>
+      `).join('');
+
+      const recClass = b.recommendation === 'award' ? 'badge-award' :
+                      b.recommendation === 'shortlist' ? 'badge-shortlist' : 'badge-reject';
+
+      return `
+        <div class="card bid-card">
+          <h3><span class="rank">${rank + 1}</span>${escapeHtml(b.bidder_name)}</h3>
+          <div class="sub">
+            Total: ${b.total_score} · Weighted: <strong>${b.weighted_score}/10</strong> ·
+            <span class="badge ${recClass}">AI RECOMMENDS: ${b.recommendation.toUpperCase()}</span>
+            ${decisionHtml}
+          </div>
+          <div style="margin: 8px 0; font-size: 13px; color: var(--muted);">
+            ${escapeHtml(b.recommendation_rationale || '')}
+          </div>
+          ${riskHtml}
+          ${scoresHtml ? `<details><summary>Show ${b.scores.length} score${b.scores.length === 1 ? '' : 's'} with citations</summary>${scoresHtml}</details>` : ''}
+          ${myDecision ? '' : `
+            <div class="decide-form" data-bid-id="${b.bid_id}">
+              <input type="text" name="rationale" placeholder="Rationale (min 10 chars)…" required minlength="10" />
+              <form class="decide-form" data-bid-id="${b.bid_id}" data-decision="accept">
+                <button type="submit" class="ok">Accept</button>
+              </form>
+              <form class="decide-form" data-bid-id="${b.bid_id}" data-decision="needs_review">
+                <button type="submit" class="warn">Needs review</button>
+              </form>
+              <form class="decide-form" data-bid-id="${b.bid_id}" data-decision="reject">
+                <button type="submit" class="danger">Reject</button>
+              </form>
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    async function runEvaluation() {
+      const r = await fetch(`${API}/evaluate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tender_id: activeTender }),
+      });
+      const d = await r.json();
+      if (r.ok) {
+        alert(`Evaluation complete. ${d.bids_evaluated} bids ranked.`);
+        loadDetail();
+      } else {
+        alert(`Error: ${d.error || r.statusText}`);
+      }
+    }
+
+    document.getElementById('ingest-tender-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const body = {
+        path: fd.get('path'),
+        title: fd.get('title') || null,
+        issuer: fd.get('issuer') || 'Unknown',
+      };
+      const r = await fetch(`${API}/tenders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (r.ok) {
+        alert(`Tender ingested: ${d.tender_id}`);
+        loadTenders();
+      } else {
+        alert(`Error: ${d.error || r.statusText}`);
+      }
+    };
+
+    function escapeHtml(s) {
+      return String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    loadTenders();
+  </script>
+</body>
+</html>
