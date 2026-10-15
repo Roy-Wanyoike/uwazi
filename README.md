@@ -238,7 +238,7 @@ The single most important architectural rule:
 
 Enforced at three layers:
 
-1. **SQL** — `CHECK (decided_by <> 'agent')` + `BEFORE INSERT` trigger on `decisions`. A judge can verify this in 60 seconds:
+1. **SQL** — `CHECK (decided_by <> 'agent')` + `BEFORE INSERT` trigger on `decisions`. A reviewer can verify this in 60 seconds:
    ```bash
    sqlite3 uwazi.db "INSERT INTO decisions (id, tender_id, bid_id, decision, rationale, decided_by, decided_at) VALUES ('hack', 't', 'b', 'accept', 'agent hack', 'agent', datetime('now'));"
    # → Parse error: agent may not record decisions — human-in-the-loop rule (ARCHITECTURE.md §5)

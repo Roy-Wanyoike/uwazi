@@ -10,7 +10,7 @@ The SQL trigger is the second line of defense (see ARCHITECTURE.md §5).
 On startup, if the DB is empty AND `AUTO_SEED_ON_START=true` (default),
 the service auto-seeds the sample Makueni tender + 3 bids. This makes
 the Vercel deployment self-contained — each cold start re-seeds the
-ephemeral SQLite, so a judge visiting the deployed URL sees the demo
+ephemeral SQLite, so a visitor opening the deployed URL sees the demo
 data immediately without running `python scripts/seed.py` themselves.
 """
 
@@ -44,7 +44,7 @@ WEB_DIR = Path(__file__).resolve().parent.parent.parent / "web"
 SAMPLES_DIR = Path(__file__).resolve().parent.parent.parent / "samples"
 
 # All sample tenders + their bids. Auto-seeded on FastAPI startup if the
-# DB is empty (so the Vercel deployment is self-contained — a judge visiting
+# DB is empty (so the Vercel deployment is self-contained — a visitor opening
 # the deployed URL sees 5 tenders × 3 bids immediately).
 TENDERS = [
     (
