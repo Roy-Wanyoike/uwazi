@@ -46,6 +46,9 @@ dependencies = [
     # Provider-agnostic LLM gateway (works with OpenAI, Qwen via ModelScope, local Llama)
     "openai>=1.30.0",
     "httpx>=0.27.0",
+    # Postgres production storage (optional — used when DATABASE_URL is set;
+    # local dev stays on the stdlib sqlite3)
+    "psycopg2-binary>=2.9.9",
     # Utilities
     "python-dotenv>=1.0.0",
     "rich>=13.7.0",

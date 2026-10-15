@@ -65,9 +65,30 @@ class LLMConfig:
 
 @dataclass(frozen=True)
 class StorageConfig:
-    """SQLite storage configuration."""
+    """Storage configuration.
+
+    Two backends are supported:
+
+      1. SQLite (default). Local dev, no extra deps. Uses stdlib `sqlite3`.
+         The DB path is `UWAZI_DB_PATH` (default: ./uwazi.db in cwd).
+
+      2. Postgres (production). Used when `DATABASE_URL` is set to a
+         `postgres://...` URL. Backs Vercel Postgres / Neon / Supabase /
+         any Postgres-compatible provider. The SQLite schema ports across
+         with one syntactic change — the BEFORE INSERT trigger on
+         `decisions` is split into a function + trigger (see _SCHEMA_PG
+         in db.py).
+    """
 
     db_path: Path = field(default_factory=lambda: Path(_env("UWAZI_DB_PATH", "./uwazi.db")))
+    database_url: str = field(default_factory=lambda: _env("DATABASE_URL", ""))
+
+    @property
+    def backend(self) -> str:
+        """Return 'postgres' if DATABASE_URL is set, else 'sqlite'."""
+        if self.database_url and self.database_url.startswith(("postgres://", "postgresql://")):
+            return "postgres"
+        return "sqlite"
 
 
 @dataclass(frozen=True)
