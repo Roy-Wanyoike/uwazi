@@ -234,3 +234,7 @@ data/
 uploads/
 samples/*.pdf
 !samples/.gitkeep
+
+# ─── SQLite WAL/SHM sidecars (created when DB is opened) ──
+*.db-wal
+*.db-shm
