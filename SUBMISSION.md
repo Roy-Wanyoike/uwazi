@@ -51,7 +51,7 @@ The brief is explicit: *"Projects missing any item in either list are ineligible
 | ✅ A demo video under 3 minutes, uploaded to YouTube or Vimeo and publicly visible. Show an unedited agent run with tool calls on screen. | Script at [scripts/demo-video-script.md](./scripts/demo-video-script.md). Record with OBS / QuickTime. Upload as unlisted. |
 | ✅ A text description of what it does, which theme, which institution, which workflow. ~300 words. | [SUBMISSION_TEXT.md](./SUBMISSION_TEXT.md). |
 | ✅ ARCHITECTURE.md — one page. Agent shape, MCP servers built versus borrowed, and why. | [ARCHITECTURE.md](./ARCHITECTURE.md). |
-| ✅ EVALS.md — eight or more test tasks with pass and fail results, plus one failure you did not fix and what you would try next. | [EVALS.md](./EVALS.md) — 33 tests, 5 negative-path, 1 documented unfixed failure. |
+| ✅ EVALS.md — eight or more test tasks with pass and fail results, plus one failure you did not fix and what you would try next. | [EVALS.md](./EVALS.md) — 42 tests, including negative paths, plus 1 documented unfixed failure. |
 
 ## What was built in the 5-day build window
 
@@ -71,7 +71,7 @@ If you want to verify the build window, run `git log --pretty=format:'%h %ad %s'
 
 1. [README.md](./README.md) — what Uwazi is, the architectural rule, the honest list of what's unfinished.
 2. [ARCHITECTURE.md](./ARCHITECTURE.md) — one page: agent shape, MCP servers built vs borrowed, the human-in-the-loop gate.
-3. [EVALS.md](./EVALS.md) — 33 tests with pass/fail results + one known unfixed failure with next steps.
+3. [EVALS.md](./EVALS.md) — 42 tests with pass/fail results + one known unfixed failure with next steps.
 4. [JUDGE_GUIDE.md](./JUDGE_GUIDE.md) — walks through every judging criterion, points to exact files / commands.
 5. [src/uwazi/orchestrator.py](./src/uwazi/orchestrator.py) — the LangGraph `StateGraph` with 5 nodes + 1 conditional edge.
 

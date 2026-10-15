@@ -171,7 +171,7 @@ That is the SQL trigger. Even if a bug in the tool layer let the agent through, 
 python -m uwazi.cli audit --tender-id makueni-water-2026
 ```
 
-Returns JSON listing every AI proposal (the orchestrator's report, every score, every risk flag) and every human decision (officer-1's `accept` on AquaForce), in chronological order. Mention: this is exportable as a signed PDF for the procurement archive — that's the compliance artifact a real audit office would demand.
+Returns JSON listing every AI proposal (the orchestrator's report, every score, every risk flag) and every human decision (officer-1's `accept` on AquaForce), in chronological order. Mention: the same structured trail is available through the HTTP API and review UI; signed-PDF export is future work.
 
 Show the audit entry for the orchestrator run:
 

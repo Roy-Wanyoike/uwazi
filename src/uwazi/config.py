@@ -4,12 +4,13 @@ Every setting has a sensible default so the demo runs without any
 environment configuration. Production deployments override via the
 environment (or a `.env` file loaded by python-dotenv).
 """
+
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from decimal import Decimal
 from pathlib import Path
-import os
 
 from dotenv import load_dotenv
 
@@ -47,7 +48,9 @@ class LLMConfig:
     """
 
     api_key: str = field(default_factory=lambda: _env("OPENAI_API_KEY", ""))
-    base_url: str = field(default_factory=lambda: _env("OPENAI_BASE_URL", "https://api.openai.com/v1"))
+    base_url: str = field(
+        default_factory=lambda: _env("OPENAI_BASE_URL", "https://api.openai.com/v1")
+    )
     model: str = field(default_factory=lambda: _env("OPENAI_MODEL", "gpt-4o-mini"))
 
     #: When True, the gateway returns deterministic canned responses and
@@ -133,7 +136,9 @@ class CitationConfig:
     #: paragraph for the citation to count as "supportive". 0.75 is the
     #: default — high enough to catch hallucinated citations, low enough
     #: to allow paraphrased evidence.
-    min_similarity: float = field(default_factory=lambda: _env_float("CITATION_MIN_SIMILARITY", 0.75))
+    min_similarity: float = field(
+        default_factory=lambda: _env_float("CITATION_MIN_SIMILARITY", 0.75)
+    )
 
 
 @dataclass(frozen=True)

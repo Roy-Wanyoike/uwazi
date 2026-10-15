@@ -21,17 +21,13 @@ If the external fetch server is unavailable (e.g., offline demo), the
 tool degrades gracefully — the agent reads from the local file path
 instead and notes the fallback in the audit trail.
 """
+
 from __future__ import annotations
 
-import asyncio
-import json
 import os
-import shutil
 import subprocess
 import sys
-from pathlib import Path
 from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # The official MCP fetch server — Python implementation
@@ -89,9 +85,7 @@ async def fetch_url_via_external_mcp(url: str, max_length: int = 5000) -> dict[s
                 )
                 # The result.content is a list of content blocks
                 if result.content:
-                    text_blocks = [
-                        b for b in result.content if hasattr(b, "text")
-                    ]
+                    text_blocks = [b for b in result.content if hasattr(b, "text")]
                     text = text_blocks[0].text if text_blocks else ""
                     return {
                         "url": url,

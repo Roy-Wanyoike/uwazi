@@ -14,6 +14,7 @@ Each agent:
 None of the agents writes to the database. The orchestrator is the only
 entity that persists, and it does so via the MCP tools.
 """
+
 from __future__ import annotations
 
 import json
@@ -23,16 +24,15 @@ from typing import Any
 
 from .gateway import Gateway, LLMResponse
 from .prompts import (
-    analyzer_user,
-    extractor_user,
-    risk_user,
-    scorer_user,
     ANALYZER_SYSTEM,
     EXTRACTOR_SYSTEM,
     RISK_SYSTEM,
     SCORER_SYSTEM,
+    analyzer_user,
+    extractor_user,
+    risk_user,
+    scorer_user,
 )
-
 
 # ---------------------------------------------------------------------------
 # JSON parsing — strict, no backticks, no prose
@@ -53,15 +53,18 @@ def _parse_json(response: LLMResponse) -> dict[str, Any]:
             text = text[first_newline + 1 :]
         # Strip the closing fence
         if text.endswith("```"):
-            text = text[: -3]
+            text = text[:-3]
         text = text.strip()
     try:
-        return json.loads(text)
+        data = json.loads(text)
     except json.JSONDecodeError as exc:
         raise AgentError(
             f"LLM returned non-JSON response (stubbed={response.stubbed}): "
             f"{response.content[:200]}..."
         ) from exc
+    if not isinstance(data, dict):
+        raise AgentError("LLM returned JSON that is not an object")
+    return data
 
 
 class AgentError(Exception):

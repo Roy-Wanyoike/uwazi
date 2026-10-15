@@ -50,8 +50,17 @@ python -m pytest tests/ -v
 | 31 | `test_record_officer_decision_human` | A human principal can record `accept` / `reject` / `needs_review`. | ✅ PASS |
 | 32 | `test_record_officer_decision_agent_refused` | An agent principal is refused. | ✅ PASS |
 | 33 | `test_get_audit_trail_after_workflow` | The audit trail includes the AI proposal AND the human decision. | ✅ PASS |
+| 34 | `test_tender_detail_includes_flattened_scores_and_citations` | The HTTP tender response matches the score and citation shape consumed by the review UI. | ✅ PASS |
+| 35 | `test_audit_endpoint_returns_ai_proposals` | The HTTP audit endpoint returns stored AI proposals instead of an empty placeholder. | ✅ PASS |
+| 36 | `test_decision_rejects_bid_from_another_tender` | A decision cannot attach a bid from a different tender. | ✅ PASS |
+| 37 | `test_reseed_is_disabled_without_admin_token` | The destructive reseed endpoint stays disabled until an admin token is configured. | ✅ PASS |
+| 38 | `test_gateway_enforces_configured_token_cap` | Per-call model output cannot exceed the configured token ceiling. | ✅ PASS |
+| 39 | `test_tool_refuses_unknown_principal_kind_without_persisting` | Invalid principal kinds are rejected before persistence. | ✅ PASS |
+| 40 | `test_fetch_failure_without_tender_does_not_break_audit_fk` | External-fetch failure does not write an audit row with a nonexistent tender. | ✅ PASS |
+| 41 | `test_weighted_score_matches_criteria_by_name_not_list_order` | Weighted scoring matches criteria by name rather than relying on model response order. | ✅ PASS |
+| 42 | `test_strip_frontmatter` | Markdown frontmatter is removed before paragraph extraction. | ✅ PASS |
 
-**Total: 33 tests, 33 passing, 0 failing.** Run time: ~1.1 seconds.
+**Total: 42 tests, 42 passing, 0 failing.** Run time: 5.47 seconds on Windows/Python 3.12.
 
 ---
 
@@ -112,4 +121,4 @@ To add a new test:
 
 The brief asks: *"Is the README honest about what is unfinished?"*
 
-This file is the eval-side answer to that question. The 33 passing tests are real. The 0 failing tests are real. The known gaps are listed above. The one unfixed failure is documented with a concrete next-step plan.
+This file is the eval-side answer to that question. The 42 passing tests are real. The 0 failing tests are real. The known gaps are listed above. The one unfixed failure is documented with a concrete next-step plan.

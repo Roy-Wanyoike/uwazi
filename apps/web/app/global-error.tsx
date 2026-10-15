@@ -79,7 +79,7 @@ curl https://<your-vercel-url>/api/v1/healthz
 curl https://<your-vercel-url>/api/v1/admin/seed-status
 
 # 3. Force a re-seed if the DB looks empty
-curl -X POST https://<your-vercel-url>/api/v1/admin/reseed`}
+curl -X POST -H "X-Uwazi-Admin-Token: <your-admin-token>" https://<your-vercel-url>/api/v1/admin/reseed`}
           </pre>
           <p style={{ color: "#94a3b8", fontSize: 12, margin: "12px 0 0" }}>
             Error message: <code>{error.message || "(no message)"}</code>

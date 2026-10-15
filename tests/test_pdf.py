@@ -3,7 +3,10 @@
 Paragraph-level citation tracking is what makes the system work for
 both PDFs (page-based) and Markdown (no pages).
 """
+
 from __future__ import annotations
+
+from pathlib import Path
 
 from uwazi.pdf import (
     citation_for,
@@ -12,7 +15,6 @@ from uwazi.pdf import (
     search_paragraphs,
     split_paragraphs,
 )
-from pathlib import Path
 
 
 def test_split_paragraphs_blank_lines() -> None:

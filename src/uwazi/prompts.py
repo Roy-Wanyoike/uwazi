@@ -11,8 +11,10 @@ The prompts are deliberately strict about:
   3. Refusal to fabricate — if the agent cannot find evidence, it returns
      an empty list rather than guessing.
 """
+
 from __future__ import annotations
 
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # ExtractorAgent — extracts criteria from a tender
@@ -82,7 +84,7 @@ HARD RULES:
 def analyzer_user(
     bidder_name: str,
     bid_paragraphs: list[str],
-    criteria: list[dict],
+    criteria: list[dict[str, Any]],
 ) -> str:
     """Build the user prompt for the BidAnalyzerAgent."""
     numbered = "\n".join(f"[{i}] {p}" for i, p in enumerate(bid_paragraphs))
@@ -125,7 +127,7 @@ HARD RULES:
 
 def scorer_user(
     bidder_name: str,
-    criteria_with_responses: list[dict],
+    criteria_with_responses: list[dict[str, Any]],
 ) -> str:
     """Build the user prompt for the ScorerAgent."""
     lines = []
@@ -176,7 +178,7 @@ HARD RULES:
 def risk_user(
     bidder_name: str,
     bid_paragraphs: list[str],
-    mandatory_criteria: list[dict],
+    mandatory_criteria: list[dict[str, Any]],
     financial_quote: str | None,
 ) -> str:
     """Build the user prompt for the RiskAgent."""

@@ -6,20 +6,21 @@ the agent may NEVER record a decision. Enforced at three layers:
   2. Tool layer — `record_officer_decision` refuses agent principals
   3. Process — this test suite runs on every commit
 """
+
 from __future__ import annotations
 
 import json
+import sqlite3
 
 import pytest
 
-from uwazi.db import in_memory_db
-from uwazi.models import Decision, DecisionType
-from uwazi.mcp_server import record_officer_decision
 from uwazi import db as db_module
+from uwazi.db import in_memory_db
+from uwazi.mcp_server import record_officer_decision
 
 
 @pytest.fixture(autouse=True)
-def setup_in_memory_db(monkeypatch) -> None:
+def setup_in_memory_db(monkeypatch: pytest.MonkeyPatch) -> None:
     """Replace the global DB with an in-memory one for every test."""
     db = in_memory_db()
     # Seed a tender + bid so the FK references resolve
@@ -78,7 +79,7 @@ def test_check_constraint_refuses_invalid_decision() -> None:
         "VALUES (?, ?, ?, ?, ?)",
         ("b3", "t3", "B", "/b3.md", "2026-10-15T00:00:00Z"),
     )
-    with pytest.raises(Exception):
+    with pytest.raises(sqlite3.IntegrityError):
         db._conn.execute(
             "INSERT INTO decisions (id, tender_id, bid_id, decision, rationale, decided_by, decided_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -151,3 +152,17 @@ def test_tool_refuses_invalid_decision_type() -> None:
     d = json.loads(result)
     assert "error" in d
     assert "invalid decision" in d["error"].lower()
+
+
+def test_tool_refuses_unknown_principal_kind_without_persisting() -> None:
+    result = record_officer_decision(
+        tender_id="t1",
+        bid_id="b1",
+        decision="accept",
+        rationale="Unknown principal kinds must fail before persistence.",
+        principal_id="service-1",
+        principal_kind="service",
+    )
+    payload = json.loads(result)
+    assert "human-in-the-loop" in payload["error"]
+    assert db_module.get_db().list_decisions("t1") == []

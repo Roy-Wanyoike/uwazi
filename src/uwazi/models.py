@@ -5,23 +5,23 @@ storage layer, and the review UI. They are deliberately explicit: every
 AI output carries `ai_generated=True`, every claim carries citations,
 every decision carries a human principal.
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from enum import Enum
-from typing import Literal
+from enum import StrEnum
+from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
-
 
 # ---------------------------------------------------------------------------
 # Principals — who is calling the tool?
 # ---------------------------------------------------------------------------
 
 
-class PrincipalKind(str, Enum):
+class PrincipalKind(StrEnum):
     """The kind of caller making an MCP request.
 
     `record_officer_decision` refuses any request where `kind='agent'`.
@@ -46,12 +46,12 @@ class Principal(BaseModel):
     display_name: str = ""
 
     @classmethod
-    def officer_demo(cls) -> "Principal":
+    def officer_demo(cls) -> Principal:
         """The demo procurement officer principal."""
         return cls(id="officer-demo", kind=PrincipalKind.HUMAN, display_name="Demo Officer")
 
     @classmethod
-    def agent(cls) -> "Principal":
+    def agent(cls) -> Principal:
         """The agent principal — used for AI-originated tool calls."""
         return cls(id="uwazi-agent", kind=PrincipalKind.AGENT, display_name="Uwazi Agent")
 
@@ -92,7 +92,7 @@ class Tender(BaseModel):
     issuer: str
     country_code: str
     document_path: str
-    ingested_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    ingested_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class Bid(BaseModel):
@@ -104,7 +104,7 @@ class Bid(BaseModel):
     tender_id: str
     bidder_name: str
     document_path: str
-    ingested_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    ingested_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class Document(BaseModel):
@@ -120,7 +120,7 @@ class Document(BaseModel):
     parent_id: str  # tender_id or bid_id
     source_path: str
     paragraphs: list[str] = Field(min_length=1)
-    ingested_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    ingested_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # ---------------------------------------------------------------------------
@@ -128,7 +128,7 @@ class Document(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class CriterionCategory(str, Enum):
+class CriterionCategory(StrEnum):
     ELIGIBILITY = "eligibility"
     TECHNICAL = "technical"
     FINANCIAL = "financial"
@@ -225,14 +225,14 @@ class Report(BaseModel):
 
     id: UUID = Field(default_factory=uuid4)
     tender_id: str
-    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     bids: list[BidEvaluation] = Field(default_factory=list)
     ai_generated: bool = True
     correlation_id: str = ""
     token_cost_cents: Decimal = Decimal("0")
 
 
-class DecisionType(str, Enum):
+class DecisionType(StrEnum):
     """The three decisions a procurement officer can record."""
 
     ACCEPT = "accept"
@@ -255,7 +255,7 @@ class Decision(BaseModel):
     decision: DecisionType
     rationale: str
     decided_by: str  # must NOT be 'agent'
-    decided_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    decided_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 # ---------------------------------------------------------------------------
@@ -267,7 +267,7 @@ class AuditEntry(BaseModel):
     """One entry in the audit trail.
 
     Every AI proposal and every human decision produces an AuditEntry.
-    The trail is exportable as a signed PDF for the procurement archive.
+    The trail is exposed through MCP, the HTTP API, and the review UI.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -278,5 +278,5 @@ class AuditEntry(BaseModel):
     entry_kind: Literal["ai_proposal", "human_decision", "tool_call"]
     actor: str
     actor_kind: PrincipalKind
-    payload: dict
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    payload: dict[str, Any]
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))

@@ -42,8 +42,8 @@ export default function Error({
             to confirm the API is responding.
           </li>
           <li>
-            Hit <code>POST /api/v1/admin/reseed</code> from your laptop to
-            force a fresh seed into Neon.
+            Call <code>POST /api/v1/admin/reseed</code> with the configured
+            <code> X-Uwazi-Admin-Token</code> header to force a fresh seed.
           </li>
         </ol>
         <p className="bid-meta" style={{ marginTop: 12 }}>

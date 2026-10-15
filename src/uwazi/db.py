@@ -24,17 +24,19 @@ between backends — no per-query branching needed.
 The schema initialization is the only place that branches by backend
 (see `_SCHEMA_SQLITE` vs `_SCHEMA_PG`).
 """
+
 from __future__ import annotations
 
 import json
 import re
 import sqlite3
 import threading
+from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 from uuid import uuid4
 
 from .config import StorageConfig
@@ -47,14 +49,12 @@ from .models import (
     Decision,
     DecisionType,
     Document,
-    Principal,
     PrincipalKind,
     Report,
     RiskFlag,
     Score,
     Tender,
 )
-
 
 # ===========================================================================
 # SQLite schema (the canonical one)
@@ -171,6 +171,14 @@ CREATE TABLE IF NOT EXISTS audit_trail (
     payload     TEXT NOT NULL,
     timestamp   TEXT NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_bids_tender ON bids(tender_id);
+CREATE INDEX IF NOT EXISTS idx_criteria_tender ON criteria(tender_id);
+CREATE INDEX IF NOT EXISTS idx_scores_bid_criterion ON scores(bid_id, criterion_id);
+CREATE INDEX IF NOT EXISTS idx_risk_flags_bid ON risk_flags(bid_id);
+CREATE INDEX IF NOT EXISTS idx_reports_tender_generated ON reports(tender_id, generated_at);
+CREATE INDEX IF NOT EXISTS idx_decisions_tender_decided ON decisions(tender_id, decided_at);
+CREATE INDEX IF NOT EXISTS idx_audit_tender_timestamp ON audit_trail(tender_id, timestamp);
 """
 
 
@@ -303,6 +311,14 @@ CREATE TABLE IF NOT EXISTS audit_trail (
     payload     TEXT NOT NULL,
     timestamp   TEXT NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_bids_tender ON bids(tender_id);
+CREATE INDEX IF NOT EXISTS idx_criteria_tender ON criteria(tender_id);
+CREATE INDEX IF NOT EXISTS idx_scores_bid_criterion ON scores(bid_id, criterion_id);
+CREATE INDEX IF NOT EXISTS idx_risk_flags_bid ON risk_flags(bid_id);
+CREATE INDEX IF NOT EXISTS idx_reports_tender_generated ON reports(tender_id, generated_at);
+CREATE INDEX IF NOT EXISTS idx_decisions_tender_decided ON decisions(tender_id, decided_at);
+CREATE INDEX IF NOT EXISTS idx_audit_tender_timestamp ON audit_trail(tender_id, timestamp);
 """
 
 
@@ -313,7 +329,7 @@ CREATE TABLE IF NOT EXISTS audit_trail (
 # Regex: match `INSERT OR REPLACE INTO table (cols) VALUES (placeholders)`
 # and capture the table name, column list, and placeholders.
 _INSERT_OR_REPLACE_RE = re.compile(
-    r'INSERT\s+OR\s+REPLACE\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)',
+    r"INSERT\s+OR\s+REPLACE\s+INTO\s+(\w+)\s*\(([^)]+)\)\s*VALUES\s*\(([^)]+)\)",
     re.IGNORECASE | re.DOTALL,
 )
 
@@ -329,8 +345,9 @@ def _convert_query_to_postgres(query: str) -> str:
     """
     # 1. Placeholders.
     query = re.sub(r"\?", "%s", query)
+
     # 2. INSERT OR REPLACE → ON CONFLICT DO UPDATE (UPSERT).
-    def _upsert(match: "re.Match[str]") -> str:
+    def _upsert(match: re.Match[str]) -> str:
         table = match.group(1)
         cols_str = match.group(2).strip()
         placeholders_str = match.group(3).strip()
@@ -348,6 +365,7 @@ def _convert_query_to_postgres(query: str) -> str:
             f"INSERT INTO {table} ({cols_str}) VALUES ({placeholders_str}) "
             f"ON CONFLICT (id) DO UPDATE SET {set_clause}"
         )
+
     query = _INSERT_OR_REPLACE_RE.sub(_upsert, query)
     return query
 
@@ -361,9 +379,9 @@ class _PgConn:
     """
 
     def __init__(self, conn: Any) -> None:
-        self._conn = conn
+        self._conn: Any = conn
 
-    def execute(self, query: str, params: tuple | None = None):
+    def execute(self, query: str, params: tuple[Any, ...] | None = None) -> Any:
         q = _convert_query_to_postgres(query)
         cur = self._conn.cursor()
         if params is None:
@@ -384,17 +402,17 @@ class _PgConn:
         self._conn.close()
 
     @property
-    def row_factory(self):
+    def row_factory(self) -> Any:
         return self._conn.row_factory
 
     @row_factory.setter
-    def row_factory(self, value):
+    def row_factory(self, value: Any) -> None:
         # psycopg2 with RealDictCursor uses cursor_factory on the conn,
         # not row_factory. Setting this is a no-op — we set the cursor
         # factory at construction time. So accept and ignore.
         pass
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> Any:
         """Pass-through for any other methods (commit, rollback, cursor)."""
         return getattr(self._conn, name)
 
@@ -417,6 +435,7 @@ class Database:
         self._config = config or StorageConfig()
         self._lock = threading.RLock()
         self._backend = self._config.backend
+        self._conn: sqlite3.Connection | _PgConn
 
         if self._backend == "postgres":
             self._init_postgres()
@@ -447,12 +466,13 @@ class Database:
                 "or unset DATABASE_URL to fall back to SQLite"
             ) from exc
 
-        conn = psycopg2.connect(self._config.database_url)
+        conn = psycopg2.connect(
+            self._config.database_url,
+            cursor_factory=RealDictCursor,
+        )
         conn.autocommit = True  # we manage txns manually via BEGIN/COMMIT
         # Wrap so every execute() is SQLite→Postgres converted on the fly.
         self._conn = _PgConn(conn)
-        # RealDictCursor makes rows behave like dicts (sqlite3.Row compatible).
-        conn.cursor_factory = RealDictCursor
         # Run the schema. Postgres allows multi-statement execute in one call.
         with self._lock:
             self._conn.executescript(_SCHEMA_PG)
@@ -495,15 +515,11 @@ class Database:
             )
 
     def get_tender(self, tender_id: str) -> Tender | None:
-        row = self._conn.execute(
-            "SELECT * FROM tenders WHERE id = ?", (tender_id,)
-        ).fetchone()
+        row = self._conn.execute("SELECT * FROM tenders WHERE id = ?", (tender_id,)).fetchone()
         return _tender_from_row(row) if row else None
 
     def list_tenders(self) -> list[Tender]:
-        rows = self._conn.execute(
-            "SELECT * FROM tenders ORDER BY ingested_at DESC"
-        ).fetchall()
+        rows = self._conn.execute("SELECT * FROM tenders ORDER BY ingested_at DESC").fetchall()
         return [_tender_from_row(r) for r in rows]
 
     # ------------------------------------------------------------------
@@ -524,6 +540,11 @@ class Database:
             "SELECT * FROM bids WHERE tender_id = ? ORDER BY ingested_at", (tender_id,)
         ).fetchall()
         return [_bid_from_row(r) for r in rows]
+
+    def get_bid(self, bid_id: str) -> Bid | None:
+        """Return one bid by ID, or ``None`` when it does not exist."""
+        row = self._conn.execute("SELECT * FROM bids WHERE id = ?", (bid_id,)).fetchone()
+        return _bid_from_row(row) if row else None
 
     # ------------------------------------------------------------------
     # Documents
@@ -546,9 +567,7 @@ class Database:
             )
 
     def get_document(self, doc_id: str) -> Document | None:
-        row = self._conn.execute(
-            "SELECT * FROM documents WHERE id = ?", (doc_id,)
-        ).fetchone()
+        row = self._conn.execute("SELECT * FROM documents WHERE id = ?", (doc_id,)).fetchone()
         return _document_from_row(row) if row else None
 
     # ------------------------------------------------------------------
@@ -772,7 +791,7 @@ def _bid_from_row(row: Any) -> Bid:
 def _document_from_row(row: Any) -> Document:
     return Document(
         id=row["id"],
-        kind=row["kind"],  # type: ignore[arg-type]
+        kind=row["kind"],
         parent_id=row["parent_id"],
         source_path=row["source_path"],
         paragraphs=json.loads(row["paragraphs"]),
@@ -786,7 +805,7 @@ def _criterion_from_row(row: Any) -> Criterion:
         tender_id=row["tender_id"],
         name=row["name"],
         description=row["description"],
-        category=row["category"],  # type: ignore[arg-type]
+        category=row["category"],
         weight=row["weight"],
         mandatory=bool(row["mandatory"]),
         citation=Citation.model_validate_json(row["citation"]),
@@ -812,7 +831,7 @@ def _risk_flag_from_row(row: Any) -> RiskFlag:
         id=row["id"],
         bid_id=row["bid_id"],
         risk_type=row["risk_type"],
-        severity=row["severity"],  # type: ignore[arg-type]
+        severity=row["severity"],
         description=row["description"],
         citation=Citation.model_validate_json(row["citation"]),
         ai_generated=bool(row["ai_generated"]),
@@ -836,7 +855,7 @@ def _report_from_row(row: Any) -> Report:
 
     bids_data = json.loads(row["bids"])
     return Report(
-        id=row["id"],  # type: ignore[arg-type]
+        id=row["id"],
         tender_id=row["tender_id"],
         generated_at=datetime.fromisoformat(row["generated_at"]),
         bids=[BidEvaluation.model_validate(b) for b in bids_data],
@@ -851,7 +870,7 @@ def _audit_from_row(row: Any) -> AuditEntry:
         id=row["id"],
         tender_id=row["tender_id"],
         bid_id=row["bid_id"],
-        entry_kind=row["entry_kind"],  # type: ignore[arg-type]
+        entry_kind=row["entry_kind"],
         actor=row["actor"],
         actor_kind=PrincipalKind(row["actor_kind"]),
         payload=json.loads(row["payload"]),
@@ -871,7 +890,7 @@ def new_id(prefix: str) -> str:
 
 def in_memory_db() -> Database:
     """Return a Database backed by an in-memory SQLite (for tests)."""
-    cfg = StorageConfig(db_path=Path(":memory:"))  # type: ignore[arg-type]
+    cfg = StorageConfig(db_path=Path(":memory:"))
     return Database(cfg)
 
 

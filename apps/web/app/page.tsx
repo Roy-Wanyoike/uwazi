@@ -45,7 +45,7 @@ export default function HomePage() {
             <div className="label">LangGraph nodes</div>
           </div>
           <div className="stat">
-            <div className="num">33</div>
+            <div className="num">42</div>
             <div className="label">Tests passing</div>
           </div>
           <div className="stat">
@@ -98,7 +98,7 @@ export default function HomePage() {
             <h3 style={{ marginTop: 0 }}>📜 Defensible audit trail</h3>
             <p className="bid-meta">
               Every AI proposal and every human decision is timestamped, attributed, and stamped
-              <code>actor_kind=human</code> or <code>agent</code>. Exportable as a signed PDF.
+              <code>actor_kind=human</code> or <code>agent</code>, and available through the audit API and UI.
             </p>
           </div>
         </div>

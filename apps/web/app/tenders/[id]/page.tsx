@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { revalidatePath } from "next/cache";
 import { evaluateTender, getTender, recordDecision, type BidEvaluation, type Decision, type TenderDetail } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -87,6 +88,8 @@ function BidCard({ bid, rank, decisions, tenderId }: { bid: BidEvaluation; rank:
             principal_id: "officer-web",
             principal_kind: "human",
           });
+          revalidatePath(`/tenders/${tenderId}`);
+          revalidatePath(`/audit/${tenderId}`);
         }}>
           <input type="text" name="rationale" placeholder="Rationale (min 10 chars)…" required minLength={10} />
           <button type="submit" name="decision" value="accept" className="btn btn-ok">Accept</button>
@@ -162,6 +165,8 @@ curl https://<your-vercel-url>/api/v1/tenders/${id}`}</pre>
           <form action={async () => {
             "use server";
             await evaluateTender(id);
+            revalidatePath(`/tenders/${id}`);
+            revalidatePath(`/audit/${id}`);
           }}>
             <button type="submit" className="btn btn-primary">Run agentic evaluation →</button>
           </form>

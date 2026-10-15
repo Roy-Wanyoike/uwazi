@@ -39,16 +39,16 @@ The edges: extract_criteria → analyze_bids → score_bids → flag_risks
 checks for empty intermediate output and recovers by short-circuiting
 the affected bid rather than crashing the whole run.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any, Literal, TypedDict
+from typing import Any, TypedDict
 from uuid import uuid4
 
-from langgraph.graph import END, START, StateGraph
-from langgraph.graph.message import add_messages
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import END, START, StateGraph
 
 from .agents import (
     AgentError,
@@ -71,7 +71,6 @@ from .models import (
 )
 from .pdf import citation_for
 
-
 # ---------------------------------------------------------------------------
 # State — what flows between nodes
 # ---------------------------------------------------------------------------
@@ -86,19 +85,19 @@ class UwaziState(TypedDict, total=False):
     """
 
     # Inputs (immutable after `run` starts)
-    tender: dict
+    tender: dict[str, Any]
     tender_paragraphs: list[str]
-    bids: list[dict]            # each: {bid_id, bidder_name, paragraphs}
+    bids: list[dict[str, Any]]  # each: {bid_id, bidder_name, paragraphs}
     correlation_id: str
 
     # Intermediate outputs (each node adds to these)
-    criteria: list[dict]
-    responses: dict[str, list[dict]]   # bid_id -> list of responses
-    scores: dict[str, list[dict]]      # bid_id -> list of scores
-    risk_flags: dict[str, list[dict]]  # bid_id -> list of risk flags
+    criteria: list[dict[str, Any]]
+    responses: dict[str, list[dict[str, Any]]]  # bid_id -> list of responses
+    scores: dict[str, list[dict[str, Any]]]  # bid_id -> list of scores
+    risk_flags: dict[str, list[dict[str, Any]]]  # bid_id -> list of risk flags
 
     # Final output
-    report: dict | None
+    report: dict[str, Any] | None
 
     # Accounting
     tokens_used: int
@@ -131,33 +130,37 @@ class UwaziGraph:
     # Node implementations — pure functions of state
     # ------------------------------------------------------------------
 
-    async def _extract_criteria(self, state: UwaziState) -> dict:
+    async def _extract_criteria(self, state: UwaziState) -> dict[str, Any]:
         """Node 1 — extract criteria from the tender."""
         try:
-            out = await self._extractor.run(
-                state["tender"]["title"], state["tender_paragraphs"]
-            )
+            out = await self._extractor.run(state["tender"]["title"], state["tender_paragraphs"])
         except AgentError as exc:
             return {"criteria": [], "errors": [f"extractor: {exc}"]}
-        return {"criteria": out.criteria, "tokens_used": state.get("tokens_used", 0) + out.tokens_used,
-                "cost_cents": str(Decimal(state.get("cost_cents", "0")) + out.cost_cents)}
+        return {
+            "criteria": out.criteria,
+            "tokens_used": state.get("tokens_used", 0) + out.tokens_used,
+            "cost_cents": str(Decimal(state.get("cost_cents", "0")) + out.cost_cents),
+        }
 
-    async def _analyze_bids(self, state: UwaziState) -> dict:
+    async def _analyze_bids(self, state: UwaziState) -> dict[str, Any]:
         """Node 2 — for each bid, extract responses per criterion."""
-        responses: dict[str, list[dict]] = {}
+        responses: dict[str, list[dict[str, Any]]] = {}
         tokens = state.get("tokens_used", 0)
         cost = Decimal(state.get("cost_cents", "0"))
         errors: list[str] = state.get("errors", [])
 
         criteria_dicts = [
-            {"name": c["name"], "description": c["description"],
-             "category": c.get("category", "other"),
-             "mandatory": c.get("mandatory", False),
-             "weight": c.get("weight", 0.2)}
+            {
+                "name": c["name"],
+                "description": c["description"],
+                "category": c.get("category", "other"),
+                "mandatory": c.get("mandatory", False),
+                "weight": c.get("weight", 0.2),
+            }
             for c in state.get("criteria", [])
         ]
         if not criteria_dicts:
-            return {"responses": {}, "errors": errors + ["analyze: no criteria — skipping"]}
+            return {"responses": {}, "errors": [*errors, "analyze: no criteria — skipping"]}
 
         for bid in state["bids"]:
             try:
@@ -170,12 +173,16 @@ class UwaziGraph:
             except AgentError as exc:
                 responses[bid["bid_id"]] = []
                 errors.append(f"analyzer[{bid['bid_id']}]: {exc}")
-        return {"responses": responses, "tokens_used": tokens, "cost_cents": str(cost),
-                "errors": errors}
+        return {
+            "responses": responses,
+            "tokens_used": tokens,
+            "cost_cents": str(cost),
+            "errors": errors,
+        }
 
-    async def _score_bids(self, state: UwaziState) -> dict:
+    async def _score_bids(self, state: UwaziState) -> dict[str, Any]:
         """Node 3 — for each (bid, criterion) pair, produce a score."""
-        scores: dict[str, list[dict]] = {}
+        scores: dict[str, list[dict[str, Any]]] = {}
         tokens = state.get("tokens_used", 0)
         cost = Decimal(state.get("cost_cents", "0"))
         errors: list[str] = state.get("errors", [])
@@ -192,9 +199,13 @@ class UwaziGraph:
                 r = responses_by_name.get(c["name"])
                 response_text = r["response_text"] if r else "NOT FOUND IN BID"
                 criteria_with_responses.append(
-                    {"name": c["name"], "description": c["description"],
-                     "weight": c.get("weight", 0.2), "mandatory": c.get("mandatory", False),
-                     "response_text": response_text}
+                    {
+                        "name": c["name"],
+                        "description": c["description"],
+                        "weight": c.get("weight", 0.2),
+                        "mandatory": c.get("mandatory", False),
+                        "response_text": response_text,
+                    }
                 )
             try:
                 out = await self._scorer.run(bid["bidder_name"], criteria_with_responses)
@@ -204,12 +215,11 @@ class UwaziGraph:
             except AgentError as exc:
                 scores[bid_id] = []
                 errors.append(f"scorer[{bid_id}]: {exc}")
-        return {"scores": scores, "tokens_used": tokens, "cost_cents": str(cost),
-                "errors": errors}
+        return {"scores": scores, "tokens_used": tokens, "cost_cents": str(cost), "errors": errors}
 
-    async def _flag_risks(self, state: UwaziState) -> dict:
+    async def _flag_risks(self, state: UwaziState) -> dict[str, Any]:
         """Node 4 — for each bid, flag compliance risks."""
-        risk_flags: dict[str, list[dict]] = {}
+        risk_flags: dict[str, list[dict[str, Any]]] = {}
         tokens = state.get("tokens_used", 0)
         cost = Decimal(state.get("cost_cents", "0"))
         errors: list[str] = state.get("errors", [])
@@ -217,10 +227,12 @@ class UwaziGraph:
         criteria = state.get("criteria", [])
         mandatory = [
             {"name": c["name"], "description": c["description"]}
-            for c in criteria if c.get("mandatory")
+            for c in criteria
+            if c.get("mandatory")
         ]
 
         import re
+
         _PATTERNS = [
             r"(?:KES|KSh|KSH|USD|US\$|\$)\s*([\d,]+(?:\.\d+)?)",
             r"([\d,]+(?:\.\d+)?)\s*(?:KES|KSh|KSH|USD|US\$|\$)",
@@ -245,34 +257,39 @@ class UwaziGraph:
             except AgentError as exc:
                 risk_flags[bid_id] = []
                 errors.append(f"risk[{bid_id}]: {exc}")
-        return {"risk_flags": risk_flags, "tokens_used": tokens, "cost_cents": str(cost),
-                "errors": errors}
+        return {
+            "risk_flags": risk_flags,
+            "tokens_used": tokens,
+            "cost_cents": str(cost),
+            "errors": errors,
+        }
 
-    async def _compose_report(self, state: UwaziState) -> dict:
+    async def _compose_report(self, state: UwaziState) -> dict[str, Any]:
         """Node 5 — compose the final ranked report."""
         criteria = state.get("criteria", [])
         scores = state.get("scores", {})
         risk_flags = state.get("risk_flags", {})
         bids_in = state["bids"]
 
-        bid_evals: list[dict] = []
+        bid_evals: list[dict[str, Any]] = []
         for bid in bids_in:
             bid_id = bid["bid_id"]
             bid_scores = scores.get(bid_id, [])
             bid_risks = risk_flags.get(bid_id, [])
 
-            # Map scores by criterion name
             scores_by_name = {s["criterion_name"]: s for s in bid_scores}
             total_score = sum(float(s.get("score", 0)) for s in bid_scores)
             weighted = sum(
-                float(s.get("score", 0)) * float(c.get("weight", 0.2))
-                for s, c in zip(bid_scores, criteria)
-            ) if bid_scores else 0.0
+                float(scores_by_name.get(c["name"], {}).get("score", 0))
+                * float(c.get("weight", 0.2))
+                for c in criteria
+            )
 
             has_critical = any(r.get("severity") == "critical" for r in bid_risks)
             any_mandatory_zero = any(
-                float(s.get("score", 0)) == 0.0 and c.get("mandatory", False)
-                for s, c in zip(bid_scores, criteria)
+                float(scores_by_name.get(c["name"], {}).get("score", 0)) == 0.0
+                and c.get("mandatory", False)
+                for c in criteria
             )
 
             if has_critical or any_mandatory_zero:
@@ -288,15 +305,17 @@ class UwaziGraph:
                 recommendation = "reject"
                 rec_rationale = f"Weighted score {weighted:.2f}/10 — too low to shortlist."
 
-            bid_evals.append({
-                "bid_id": bid_id,
-                "bidder_name": bid["bidder_name"],
-                "total_score": total_score,
-                "weighted_score": weighted,
-                "risk_flags": bid_risks,
-                "recommendation": recommendation,
-                "recommendation_rationale": rec_rationale,
-            })
+            bid_evals.append(
+                {
+                    "bid_id": bid_id,
+                    "bidder_name": bid["bidder_name"],
+                    "total_score": total_score,
+                    "weighted_score": weighted,
+                    "risk_flags": bid_risks,
+                    "recommendation": recommendation,
+                    "recommendation_rationale": rec_rationale,
+                }
+            )
 
         rank_order = {"award": 0, "shortlist": 1, "reject": 2}
         bid_evals.sort(key=lambda b: (rank_order[b["recommendation"]], -b["weighted_score"]))
@@ -327,7 +346,7 @@ class UwaziGraph:
     # Build the graph
     # ------------------------------------------------------------------
 
-    def _build(self):
+    def _build(self) -> Any:
         graph = StateGraph(UwaziState)
         graph.add_node("extract_criteria", self._extract_criteria)
         graph.add_node("analyze_bids", self._analyze_bids)
@@ -352,7 +371,7 @@ class UwaziGraph:
     # Public run
     # ------------------------------------------------------------------
 
-    async def run(self, ctx: "OrchestratorContext") -> "OrchestratorResult":
+    async def run(self, ctx: OrchestratorContext) -> OrchestratorResult:
         """Run the full evaluation workflow on a tender + its bids.
 
         Returns an `OrchestratorResult` containing the Report + the
@@ -369,8 +388,11 @@ class UwaziGraph:
             },
             "tender_paragraphs": ctx.tender_paragraphs,
             "bids": [
-                {"bid_id": b.id, "bidder_name": b.bidder_name,
-                 "paragraphs": ctx.bid_paragraphs.get(b.id, [])}
+                {
+                    "bid_id": b.id,
+                    "bidder_name": b.bidder_name,
+                    "paragraphs": ctx.bid_paragraphs.get(b.id, []),
+                }
                 for b in ctx.bids
             ],
             "correlation_id": uuid4().hex,
@@ -394,17 +416,19 @@ class UwaziGraph:
                 )
             except IndexError:
                 continue
-            criteria_typed.append(Criterion(
-                id=f"criterion-{ctx.tender.id}-{i}",
-                tender_id=ctx.tender.id,
-                name=c["name"],
-                description=c["description"],
-                category=CriterionCategory(c.get("category", "other")),
-                weight=float(c.get("weight", 0.2)),
-                mandatory=bool(c.get("mandatory", False)),
-                citation=cit,
-                ai_generated=True,
-            ))
+            criteria_typed.append(
+                Criterion(
+                    id=f"criterion-{ctx.tender.id}-{i}",
+                    tender_id=ctx.tender.id,
+                    name=c["name"],
+                    description=c["description"],
+                    category=CriterionCategory(c.get("category", "other")),
+                    weight=float(c.get("weight", 0.2)),
+                    mandatory=bool(c.get("mandatory", False)),
+                    citation=cit,
+                    ai_generated=True,
+                )
+            )
 
         scores_typed: list[Score] = []
         for bid in ctx.bids:
@@ -413,8 +437,10 @@ class UwaziGraph:
             responses_by_name = {r["criterion_name"]: r for r in bid_responses}
             bid_paragraphs = ctx.bid_paragraphs.get(bid.id, [])
             for c in criteria_typed:
-                s_dict = next((s for s in bid_scores if s["criterion_name"] == c.name),
-                              {"score": 0.0, "rationale": "not scored"})
+                s_dict: dict[str, Any] = next(
+                    (s for s in bid_scores if s["criterion_name"] == c.name),
+                    {"score": 0.0, "rationale": "not scored"},
+                )
                 r = responses_by_name.get(c.name)
                 if r and r.get("citation_paragraph", -1) >= 0:
                     try:
@@ -427,16 +453,18 @@ class UwaziGraph:
                         bid_cit = c.citation
                 else:
                     bid_cit = c.citation
-                scores_typed.append(Score(
-                    id=f"score-{bid.id}-{c.id}",
-                    bid_id=bid.id,
-                    criterion_id=c.id,
-                    score=float(s_dict.get("score", 0.0)),
-                    rationale=s_dict.get("rationale", ""),
-                    citation_tender=c.citation,
-                    citation_bid=bid_cit,
-                    ai_generated=True,
-                ))
+                scores_typed.append(
+                    Score(
+                        id=f"score-{bid.id}-{c.id}",
+                        bid_id=bid.id,
+                        criterion_id=c.id,
+                        score=float(s_dict.get("score", 0.0)),
+                        rationale=str(s_dict.get("rationale", "")),
+                        citation_tender=c.citation,
+                        citation_bid=bid_cit,
+                        ai_generated=True,
+                    )
+                )
 
         risks_typed: list[RiskFlag] = []
         for bid in ctx.bids:
@@ -465,15 +493,17 @@ class UwaziGraph:
                         paragraph_text=paragraphs[0] if paragraphs else "",
                         similarity=0.0,
                     )
-                risks_typed.append(RiskFlag(
-                    id=f"risk-{bid.id}-{j}",
-                    bid_id=bid.id,
-                    risk_type=r["risk_type"],
-                    severity=r["severity"],
-                    description=r["description"],
-                    citation=cit,
-                    ai_generated=True,
-                ))
+                risks_typed.append(
+                    RiskFlag(
+                        id=f"risk-{bid.id}-{j}",
+                        bid_id=bid.id,
+                        risk_type=r["risk_type"],
+                        severity=r["severity"],
+                        description=r["description"],
+                        citation=cit,
+                        ai_generated=True,
+                    )
+                )
 
         bid_evals_typed: list[BidEvaluation] = [
             BidEvaluation(

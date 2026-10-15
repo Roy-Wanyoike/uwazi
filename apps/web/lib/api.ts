@@ -44,12 +44,13 @@ function getBaseURL(): string {
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${getBaseURL()}${path}`, {
+    cache: "no-store",
     ...init,
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error ?? `HTTP ${res.status}`);
+    throw new Error(err.error ?? err.detail ?? `HTTP ${res.status}`);
   }
   return res.json() as Promise<T>;
 }
@@ -121,6 +122,24 @@ export interface TenderDetail {
   audit_count: number;
 }
 
+export interface AuditEntry {
+  id: string;
+  tender_id: string;
+  bid_id: string | null;
+  entry_kind: "ai_proposal" | "tool_call";
+  actor: string;
+  actor_kind: "agent";
+  payload: Record<string, unknown>;
+  timestamp: string;
+}
+
+export interface AuditTrail {
+  tender_id: string;
+  ai_proposals: AuditEntry[];
+  human_decisions: Decision[];
+  note: string;
+}
+
 export interface OpenNotice {
   tender_id: string;
   title: string;
@@ -139,7 +158,11 @@ export interface OpenNotice {
 
 export const listTenders = () => api<{ tenders: TenderSummary[] }>("/tenders");
 
-export const getTender = (id: string) => api<TenderDetail>(`/tenders/${id}`);
+export const getTender = (id: string) =>
+  api<TenderDetail>(`/tenders/${encodeURIComponent(id)}`);
+
+export const getAuditTrail = (id: string) =>
+  api<AuditTrail>(`/tenders/${encodeURIComponent(id)}/audit`);
 
 export const evaluateTender = (id: string) =>
   api<{ report_id: string; bids_evaluated: number; criteria_extracted: number }>(
@@ -158,19 +181,12 @@ export const recordDecision = (
     decision: string;
     decided_by: string;
     decided_at: string;
-  }>(`/tenders/${tenderId}/decisions`, {
+  }>(`/tenders/${encodeURIComponent(tenderId)}/decisions`, {
     method: "POST",
     body: JSON.stringify(body),
   });
 
 export const getOpenNotices = (countryCode: string = "KE") =>
   api<{ country_code: string; notices: OpenNotice[]; note: string }>(
-    `/open_notices?country_code=${countryCode}`,
-  ).catch(() => {
-    // If the FastAPI backend isn't running, return an empty list with a note.
-    return {
-      country_code: countryCode,
-      notices: [],
-      note: "Run `python -m uwazi.cli serve` to start the API, then refresh.",
-    };
-  });
+    `/open_notices?country_code=${encodeURIComponent(countryCode)}`,
+  );

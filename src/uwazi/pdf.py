@@ -12,13 +12,12 @@ Paragraphs are kept short (under ~500 chars where possible) so that
 citations are precise: a single citation points to one paragraph, not
 a whole page.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable
 
 from .models import Citation, Document
-
 
 # ---------------------------------------------------------------------------
 # Paragraph splitting
@@ -184,7 +183,9 @@ def citation_for(document_id: str, paragraphs: list[str], index: int) -> Citatio
     )
 
 
-def search_paragraphs(paragraphs: list[str], query: str, top_k: int = 3) -> list[tuple[int, str, float]]:
+def search_paragraphs(
+    paragraphs: list[str], query: str, top_k: int = 3
+) -> list[tuple[int, str, float]]:
     """Find the top-k paragraphs most relevant to a query.
 
     Uses a simple token-overlap similarity (TF weighted). For production

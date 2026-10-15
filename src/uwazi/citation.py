@@ -13,14 +13,14 @@ If any check fails, the claim is not published. The agent surfaces a
 `[This score could not be fully verified against the source documents]`
 marker instead.
 """
+
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 from .models import Citation
-
 
 # ---------------------------------------------------------------------------
 # Strength markers

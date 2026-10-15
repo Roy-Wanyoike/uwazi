@@ -12,38 +12,30 @@ Run the server:
 Connect from any MCP-compatible client (Claude Desktop, the MCP CLI,
 a custom Python client, etc.).
 """
+
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
-from uuid import uuid4
 
 from mcp.server.fastmcp import FastMCP
 
 from .agents import AgentError
-from .citation import validate_citation
 from .config import get_settings
-from .db import Database, get_db, new_id
-from .external_mcp import fetch_url_via_external_mcp, is_fetch_server_available
+from .db import get_db, new_id
+from .external_mcp import fetch_url_via_external_mcp
 from .gateway import build_gateway
 from .models import (
     AuditEntry,
     Bid,
-    BidResponse,
-    Criterion,
     CriterionCategory,
     Decision,
     DecisionType,
-    Document,
-    Principal,
     PrincipalKind,
     Tender,
 )
 from .orchestrator import OrchestratorAgent, OrchestratorContext
 from .pdf import ingest_document
-
 
 # ---------------------------------------------------------------------------
 # Server setup
@@ -64,6 +56,8 @@ mcp = FastMCP(
         "  - record_officer_decision (HUMAN-ONLY — refuses agent principals)\n"
         "  - get_audit_trail\n"
     ),
+    host=get_settings().mcp.sse_host,
+    port=get_settings().mcp.sse_port,
 )
 
 
@@ -102,7 +96,9 @@ def list_tenders() -> str:
 
 
 @mcp.tool()
-async def fetch_tender_notice(url: str, tender_id: str | None = None, title: str | None = None) -> str:
+async def fetch_tender_notice(
+    url: str, tender_id: str | None = None, title: str | None = None
+) -> str:
     """Fetch a tender notice from a public procurement portal URL.
 
     This tool uses the official `mcp-server-fetch` MCP server — a server
@@ -132,28 +128,33 @@ async def fetch_tender_notice(url: str, tender_id: str | None = None, title: str
 
     if fetch_result.get("fallback"):
         # External server not available — record the fallback in audit
-        db.append_audit(AuditEntry(
-            id=new_id("audit"),
-            tender_id=tender_id or "pending",
-            bid_id=None,
-            entry_kind="tool_call",
-            actor="mcp:fetch_tender_notice",
-            actor_kind=PrincipalKind.AGENT,
-            payload={
+        if tender_id and db.get_tender(tender_id) is not None:
+            db.append_audit(
+                AuditEntry(
+                    id=new_id("audit"),
+                    tender_id=tender_id,
+                    bid_id=None,
+                    entry_kind="tool_call",
+                    actor="mcp:fetch_tender_notice",
+                    actor_kind=PrincipalKind.AGENT,
+                    payload={
+                        "url": url,
+                        "external_mcp_server": "mcp-server-fetch",
+                        "fallback": True,
+                        "reason": fetch_result.get("error", ""),
+                    },
+                )
+            )
+        return json.dumps(
+            {
+                "error": (
+                    "External MCP fetch server unavailable. Install with "
+                    "`pip install mcp-server-fetch` or use `ingest_tender` with a local path."
+                ),
                 "url": url,
                 "external_mcp_server": "mcp-server-fetch",
-                "fallback": True,
-                "reason": fetch_result.get("error", ""),
-            },
-        ))
-        return json.dumps({
-            "error": (
-                "External MCP fetch server unavailable. Install with "
-                "`pip install mcp-server-fetch` or use `ingest_tender` with a local path."
-            ),
-            "url": url,
-            "external_mcp_server": "mcp-server-fetch",
-        })
+            }
+        )
 
     # We got content from the external server — save it locally and ingest
     content = fetch_result.get("content", "")
@@ -162,8 +163,9 @@ async def fetch_tender_notice(url: str, tender_id: str | None = None, title: str
 
     # Save fetched content as a temporary Markdown file
     import tempfile
-    from pathlib import Path
-    tmp = Path(tempfile.mktemp(suffix=".md"))
+
+    with tempfile.NamedTemporaryFile(suffix=".md", delete=False) as tmp_file:
+        tmp = Path(tmp_file.name)
     tmp.write_text(content, encoding="utf-8")
 
     tender = Tender(
@@ -183,29 +185,34 @@ async def fetch_tender_notice(url: str, tender_id: str | None = None, title: str
     )
     db.save_document(doc)
 
-    db.append_audit(AuditEntry(
-        id=new_id("audit"),
-        tender_id=tender_id,
-        bid_id=None,
-        entry_kind="tool_call",
-        actor="mcp:fetch_tender_notice",
-        actor_kind=PrincipalKind.AGENT,
-        payload={
-            "url": url,
-            "external_mcp_server": "mcp-server-fetch",
-            "paragraphs": len(doc.paragraphs),
-            "fetched_via": fetch_result.get("fetched_via", "external_mcp_fetch_server"),
-        },
-    ))
+    db.append_audit(
+        AuditEntry(
+            id=new_id("audit"),
+            tender_id=tender_id,
+            bid_id=None,
+            entry_kind="tool_call",
+            actor="mcp:fetch_tender_notice",
+            actor_kind=PrincipalKind.AGENT,
+            payload={
+                "url": url,
+                "external_mcp_server": "mcp-server-fetch",
+                "paragraphs": len(doc.paragraphs),
+                "fetched_via": fetch_result.get("fetched_via", "external_mcp_fetch_server"),
+            },
+        )
+    )
 
-    return json.dumps({
-        "tender_id": tender_id,
-        "title": title,
-        "url": url,
-        "paragraphs": len(doc.paragraphs),
-        "external_mcp_server": "mcp-server-fetch (official, not written by Uwazi)",
-        "note": "Tender ingested. Call evaluate_bids after ingesting bids.",
-    }, indent=2)
+    return json.dumps(
+        {
+            "tender_id": tender_id,
+            "title": title,
+            "url": url,
+            "paragraphs": len(doc.paragraphs),
+            "external_mcp_server": "mcp-server-fetch (official, not written by Uwazi)",
+            "note": "Tender ingested. Call evaluate_bids after ingesting bids.",
+        },
+        indent=2,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -236,13 +243,14 @@ def open_notices(country_code: str = "KE") -> str:
     db = get_db()
     tenders = [t for t in db.list_tenders() if t.country_code == country_code]
     if not tenders:
-        return json.dumps({
-            "country_code": country_code,
-            "notices": [],
-            "note": "No active tenders. Ingest one via `ingest_tender` or `fetch_tender_notice`.",
-        }, indent=2)
-
-    from datetime import datetime, timezone
+        return json.dumps(
+            {
+                "country_code": country_code,
+                "notices": [],
+                "note": "No active tenders. Ingest one via `ingest_tender` or `fetch_tender_notice`.",
+            },
+            indent=2,
+        )
 
     notices = []
     for t in tenders:
@@ -250,29 +258,32 @@ def open_notices(country_code: str = "KE") -> str:
         eligibility = [c for c in criteria if c.category == CriterionCategory.ELIGIBILITY]
         mandatory_docs = [c for c in criteria if c.mandatory]
 
-        notices.append({
-            "tender_id": t.id,
-            "title": t.title,
-            "issuer": t.issuer,
-            "country_code": t.country_code,
-            "ingested_at": t.ingested_at.isoformat(),
-            "criteria_count": len(criteria),
-            "eligibility_checklist": [
-                {"criterion": c.name, "description": c.description}
-                for c in eligibility
-            ],
-            "mandatory_documents": [
-                {"document": c.name, "description": c.description}
-                for c in mandatory_docs
-            ],
-            "apply_via": f"Call `ingest_bid` with tender_id={t.id} once you have prepared the mandatory documents.",
-        })
+        notices.append(
+            {
+                "tender_id": t.id,
+                "title": t.title,
+                "issuer": t.issuer,
+                "country_code": t.country_code,
+                "ingested_at": t.ingested_at.isoformat(),
+                "criteria_count": len(criteria),
+                "eligibility_checklist": [
+                    {"criterion": c.name, "description": c.description} for c in eligibility
+                ],
+                "mandatory_documents": [
+                    {"document": c.name, "description": c.description} for c in mandatory_docs
+                ],
+                "apply_via": f"Call `ingest_bid` with tender_id={t.id} once you have prepared the mandatory documents.",
+            }
+        )
 
-    return json.dumps({
-        "country_code": country_code,
-        "notices": notices,
-        "note": "This is the citizen-facing layer — every claim here is FACT (not AI-generated).",
-    }, indent=2)
+    return json.dumps(
+        {
+            "country_code": country_code,
+            "notices": notices,
+            "note": "This is the citizen-facing layer — every claim here is FACT (not AI-generated).",
+        },
+        indent=2,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -307,7 +318,7 @@ async def explain_tender_in_plain_language(tender_id: str, audience: str = "smal
     numbered = "\n".join(f"[{i}] {p}" for i, p in enumerate(paragraphs))
 
     from .gateway import build_gateway
-    from .prompts import EXTRACTOR_SYSTEM  # reuse structure
+
     gateway = build_gateway(settings.llm)
 
     system_prompt = f"""You are the PlainLanguageAgent of Uwazi. Translate a tender document into plain English for {audience}.
@@ -324,39 +335,48 @@ HARD RULES:
     response = await gateway.complete(system_prompt, user_prompt, max_tokens=2048, temperature=0.0)
 
     import json as _json
+
     try:
         data = _json.loads(response.content.strip().strip("`"))
     except Exception:
         data = {
             "summary": "[Could not parse LLM response — see raw content in audit trail.]",
-            "key_dates": [], "who_can_apply": [], "what_to_prepare": [], "citations": [],
+            "key_dates": [],
+            "who_can_apply": [],
+            "what_to_prepare": [],
+            "citations": [],
             "raw_response": response.content[:500],
         }
 
-    db.append_audit(AuditEntry(
-        id=new_id("audit"),
-        tender_id=tender_id,
-        bid_id=None,
-        entry_kind="ai_proposal",
-        actor="plain_language_agent",
-        actor_kind=PrincipalKind.AGENT,
-        payload={
-            "audience": audience,
-            "tokens_used": response.total_tokens,
-            "cost_cents": str(response.cost_cents),
-            "stubbed": response.stubbed,
-        },
-    ))
+    db.append_audit(
+        AuditEntry(
+            id=new_id("audit"),
+            tender_id=tender_id,
+            bid_id=None,
+            entry_kind="ai_proposal",
+            actor="plain_language_agent",
+            actor_kind=PrincipalKind.AGENT,
+            payload={
+                "audience": audience,
+                "tokens_used": response.total_tokens,
+                "cost_cents": str(response.cost_cents),
+                "stubbed": response.stubbed,
+            },
+        )
+    )
 
-    return json.dumps({
-        "tender_id": tender_id,
-        "title": tender.title,
-        "issuer": tender.issuer,
-        "audience": audience,
-        "ai_generated": True,
-        "stubbed": response.stubbed,
-        **data,
-    }, indent=2)
+    return json.dumps(
+        {
+            "tender_id": tender_id,
+            "title": tender.title,
+            "issuer": tender.issuer,
+            "audience": audience,
+            "ai_generated": True,
+            "stubbed": response.stubbed,
+            **data,
+        },
+        indent=2,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -485,7 +505,9 @@ def ingest_bid(
         )
     )
 
-    return json.dumps({"bid_id": bid_id, "bidder_name": bidder_name, "paragraphs": len(doc.paragraphs)})
+    return json.dumps(
+        {"bid_id": bid_id, "bidder_name": bidder_name, "paragraphs": len(doc.paragraphs)}
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -517,7 +539,7 @@ async def evaluate_bids(tender_id: str) -> str:
 
     tender_doc = db.get_document(f"doc-tender-{tender_id}")
     if tender_doc is None:
-        return json.dumps({"error": f"tender document not found — was it ingested?"})
+        return json.dumps({"error": "tender document not found — was it ingested?"})
 
     bid_paragraphs: dict[str, list[str]] = {}
     for b in bids:
@@ -614,7 +636,9 @@ def get_report(tender_id: str) -> str:
     db = get_db()
     report = db.get_latest_report(tender_id)
     if report is None:
-        return json.dumps({"error": f"no report found for tender {tender_id} — call evaluate_bids first"})
+        return json.dumps(
+            {"error": f"no report found for tender {tender_id} — call evaluate_bids first"}
+        )
 
     # Enrich with scores and risk flags from the DB
     bids_out = []
@@ -694,14 +718,16 @@ def record_officer_decision(
     Returns the persisted decision.
     """
     # --- First line of defense: refuse agent principals ---
-    if principal_kind == "agent":
+    if principal_kind != PrincipalKind.HUMAN.value:
         return json.dumps(
             {
-                "error": "agents may not record decisions — human-in-the-loop rule (ARCHITECTURE.md §5)",
+                "error": "only a human principal may record decisions — human-in-the-loop rule (ARCHITECTURE.md §5)",
                 "tender_id": tender_id,
                 "bid_id": bid_id,
             }
         )
+    if not principal_id.strip():
+        return json.dumps({"error": "principal_id must not be empty"})
 
     # --- Validate the decision type ---
     try:
@@ -721,6 +747,12 @@ def record_officer_decision(
         )
 
     db = get_db()
+
+    if db.get_tender(tender_id) is None:
+        return json.dumps({"error": f"tender {tender_id} not found"})
+    bid = db.get_bid(bid_id)
+    if bid is None or bid.tender_id != tender_id:
+        return json.dumps({"error": f"bid {bid_id} not found for tender {tender_id}"})
 
     # --- Persist ---
     d = Decision(
@@ -781,7 +813,7 @@ def get_audit_trail(tender_id: str) -> str:
     """Fetch the full audit trail for a tender.
 
     Returns every AI proposal and every human decision, in chronological
-    order. Exportable as a signed PDF for the procurement archive.
+    order. The same structured trail is exposed by the HTTP API and review UI.
     """
     db = get_db()
     entries = db.list_audit(tender_id)
@@ -828,7 +860,7 @@ def main() -> None:
     """Run the MCP server with the configured transport."""
     settings = get_settings()
     if settings.mcp.transport == "sse":
-        mcp.run(transport="sse", host=settings.mcp.sse_host, port=settings.mcp.sse_port)
+        mcp.run(transport="sse")
     else:
         mcp.run(transport="stdio")
 

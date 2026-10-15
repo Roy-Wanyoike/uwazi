@@ -96,7 +96,7 @@ Honestly: **not yet at the depth I would want**. The sample tender is shaped aft
 
 ### Honest test set
 
-[EVALS.md](./EVALS.md) lists 33 tests. Of those, **5 are negative-path tests** (the agent cannot record a decision; the citation validator rejects missing docs / out-of-range paragraphs / low similarity / strong-claim-on-soft-evidence). The test set is not curated to pass — it specifically tests the failure modes the architecture is supposed to prevent.
+[EVALS.md](./EVALS.md) lists 42 tests, including negative paths for unauthorized decisions, cross-tender writes, citation failures, external-service failure, and disabled admin operations. The test set specifically exercises the failure modes the architecture is supposed to prevent.
 
 ### Run-to-run variation
 
@@ -156,7 +156,7 @@ See [DEMO_SCRIPT.md](./DEMO_SCRIPT.md) — the full 20-minute walkthrough with t
 | Agentic depth & MCP craft | 30 | `orchestrator.py` (LangGraph) + `mcp_server.py` (10 tools) + `external_mcp.py` (official fetch server) |
 | Open-source rigour | 20 | `./run-demo.sh` (one command) + README *What is unfinished* + EVALS.md |
 | Fit to tender cycle | 20 | `samples/tender-makueni-water.md` (named office) + README *Did you talk to anyone* (honest) |
-| Evaluation & reliability | 15 | `tests/` (33 tests, 5 negative-path) + EVALS.md (one unfixed failure documented) |
+| Evaluation & reliability | 15 | `tests/` (42 tests, including negative paths) + EVALS.md (one unfixed failure documented) |
 | Defensibility | 10 | `get_audit_trail` + `token_cost_cents` + per-claim citations |
 | Demo | 5 | `scripts/demo-video-script.md` + `DEMO_SCRIPT.md` |
 

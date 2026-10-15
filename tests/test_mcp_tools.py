@@ -4,10 +4,12 @@ Verifies that each tool returns the expected shape and that the
 human-in-the-loop gate works correctly when called via the MCP tool
 (the FastMCP wrapper).
 """
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -15,6 +17,7 @@ from uwazi import db as db_module
 from uwazi.db import in_memory_db
 from uwazi.mcp_server import (
     evaluate_bids,
+    fetch_tender_notice,
     get_audit_trail,
     get_report,
     ingest_bid,
@@ -23,12 +26,11 @@ from uwazi.mcp_server import (
     record_officer_decision,
 )
 
-
 SAMPLES_DIR = Path(__file__).resolve().parent.parent / "samples"
 
 
 @pytest.fixture(autouse=True)
-def setup_in_memory_db(monkeypatch) -> None:
+def setup_in_memory_db(monkeypatch: pytest.MonkeyPatch) -> None:
     db = in_memory_db()
     monkeypatch.setattr(db_module, "_DB", db)
 
@@ -74,6 +76,20 @@ def test_ingest_tender_sample() -> None:
     d = json.loads(out)
     assert d["tender_id"] == "makueni-water-2026"
     assert d["paragraphs"] > 0
+
+
+@pytest.mark.asyncio
+async def test_fetch_failure_without_tender_does_not_break_audit_fk(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def unavailable(_url: str) -> dict[str, Any]:
+        return {"error": "offline", "fallback": True}
+
+    monkeypatch.setattr("uwazi.mcp_server.fetch_url_via_external_mcp", unavailable)
+    out = await fetch_tender_notice("https://example.invalid/tender")
+    payload = json.loads(out)
+    assert "error" in payload
+    assert payload["external_mcp_server"] == "mcp-server-fetch"
 
 
 # ---------------------------------------------------------------------------

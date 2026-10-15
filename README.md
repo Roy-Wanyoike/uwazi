@@ -9,7 +9,7 @@
 Built for the [Agentic AI for Africa Innovation Challenge](https://agentic-africa-challenge.lovable.app/) — Governance track, Bid Box Challenge, *Digital economy / Open contracting* theme.
 
 [![License](https://img.shields.io/badge/license-MIT-blue)]()
-[![Tests](https://img.shields.io/badge/tests-33%20PASS-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-42%20PASS-brightgreen)]()
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)]()
 [![MCP](https://img.shields.io/badge/MCP-10%20tools-teal)]()
 [![Orchestration](https://img.shields.io/badge/orchestration-LangGraph-orange)]()
@@ -45,7 +45,7 @@ The workflow:
    - **OrchestratorAgent** → ranked report with per-bid recommendation
 4. **`get_report`** — the procurement officer opens the report. Every score is one click from the source paragraph it was derived from.
 5. **`record_officer_decision`** — the officer records `accept` / `reject` / `needs_review` per bid. **HUMAN-ONLY.** The agent never writes the decision — there is a SQL `CHECK + trigger` that refuses any agent-originated insert.
-6. **`get_audit_trail`** — full audit trail of AI proposals + human decisions, exportable as a signed PDF for the procurement archive.
+6. **`get_audit_trail`** — full structured audit trail of AI proposals + human decisions, available through MCP, the API, and the review UI.
 
 For the *Digital economy / Open contracting* theme, Uwazi also exposes:
 
@@ -77,8 +77,8 @@ Enforced at three layers — see [ARCHITECTURE.md](./ARCHITECTURE.md):
 | **LLM gateway** | `openai` SDK pointed at any OpenAI-compatible endpoint | Default: **Qwen2.5-72B-Instruct via ModelScope** (open-weights). Also supports OpenAI for side-by-side and local Llama via Ollama for fully on-prem. |
 | **Document ingestion** | `pdfplumber` (PDF) + Markdown reader | Paragraph-level citation tracking — works for both PDFs (page-based) and Markdown (no pages). |
 | **Storage** | SQLite (portable to Postgres) | Zero-config for the demo; portable for production. |
-| **Review UI** | FastAPI + single HTML page | The procurement officer review screen. |
-| **Tests** | `pytest` + `pytest-asyncio` | 33 tests, ~1.1s. |
+| **Review UI** | Next.js + FastAPI | Server-rendered procurement review UI backed by the Python API. |
+| **Tests** | `pytest` + `pytest-asyncio` | 42 tests, ~5.5s on Windows. |
 
 ## Project structure
 
@@ -86,7 +86,7 @@ Enforced at three layers — see [ARCHITECTURE.md](./ARCHITECTURE.md):
 uwazi/
 ├── README.md                  ← you are here
 ├── ARCHITECTURE.md            ← one-page architectural contract (judge-required)
-├── EVALS.md                   ← 33 tests + 1 known unfixed failure (judge-required)
+├── EVALS.md                   ← 42 tests + 1 known unfixed failure (judge-required)
 ├── INVESTORS.md               ← market, business model, traction, roadmap
 ├── JUDGE_GUIDE.md             ← walks through every judging criterion
 ├── SUBMISSION_TEXT.md         ← 300-word submission text (judge-required)
@@ -158,7 +158,7 @@ python -m uwazi.cli mcp      # stdio MCP server
 ## Documentation (read these in order if you are a judge)
 
 1. [ARCHITECTURE.md](./ARCHITECTURE.md) — one page: agent shape, MCP servers built vs borrowed, the human-in-the-loop gate.
-2. [EVALS.md](./EVALS.md) — 33 tests with pass/fail results + one known unfixed failure with next steps.
+2. [EVALS.md](./EVALS.md) — 42 tests with pass/fail results + one known unfixed failure with next steps.
 3. [JUDGE_GUIDE.md](./JUDGE_GUIDE.md) — walks through every judging criterion, points to exact files / commands.
 4. [SUBMISSION_TEXT.md](./SUBMISSION_TEXT.md) — the 300-word submission text (theme, institution, workflow).
 5. [DEMO_SCRIPT.md](./DEMO_SCRIPT.md) — the 20-minute live review walkthrough.

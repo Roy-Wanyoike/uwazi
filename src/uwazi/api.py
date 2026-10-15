@@ -13,21 +13,23 @@ the Vercel deployment self-contained — each cold start re-seeds the
 ephemeral SQLite, so a judge visiting the deployed URL sees the demo
 data immediately without running `python scripts/seed.py` themselves.
 """
+
 from __future__ import annotations
 
 import os
+import secrets
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Header
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
-from .config import get_settings
-from .db import get_db, new_id
-from .models import AuditEntry, Bid, Decision, DecisionType, Principal, PrincipalKind, Tender
+from .db import Database, get_db, new_id
+from .models import AuditEntry, Bid, Decision, DecisionType, PrincipalKind, Report, Tender
 from .pdf import ingest_document
 
 WEB_DIR = Path(__file__).resolve().parent.parent.parent / "web"
@@ -49,7 +51,7 @@ BIDS = [
 TENDER_ID = "makueni-water-2026"
 
 
-def _seed_if_empty() -> dict:
+def _seed_if_empty() -> dict[str, Any]:
     """Seed the sample tender + 3 bids if the DB has no tenders.
 
     Returns a summary dict — useful for the /admin/reseed endpoint.
@@ -115,11 +117,11 @@ def _seed_if_empty() -> dict:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """FastAPI lifespan — runs once at startup (or on each cold start
     on Vercel serverless)."""
     auto_seed = os.environ.get("AUTO_SEED_ON_START", "true").lower() in ("1", "true", "yes")
-    seed_result = {"skipped": True}
+    seed_result: dict[str, Any] = {"skipped": True}
     if auto_seed:
         try:
             seed_result = _seed_if_empty()
@@ -143,26 +145,46 @@ app = FastAPI(
 # ---------------------------------------------------------------------------
 
 
-@app.post("/api/v1/admin/reseed")
-async def reseed() -> dict:
+@app.post("/api/v1/admin/reseed", response_model=None)
+async def reseed(
+    x_uwazi_admin_token: str | None = Header(default=None),
+) -> dict[str, Any] | JSONResponse:
     """Drop all tenders/bids/documents and re-seed the sample data.
 
     Useful on Vercel: trigger this if the DB looks wrong, or to demo
     the seed → evaluate flow from a clean state.
     """
+    expected_token = os.environ.get("UWAZI_ADMIN_TOKEN", "")
+    if not expected_token:
+        return JSONResponse(
+            {"error": "reseed is disabled until UWAZI_ADMIN_TOKEN is configured"},
+            status_code=503,
+        )
+    if not x_uwazi_admin_token or not secrets.compare_digest(x_uwazi_admin_token, expected_token):
+        return JSONResponse({"error": "invalid admin token"}, status_code=403)
+
     db = get_db()
     # Order matters because of FK constraints
     with db.transaction() as conn:
-        for table in ("audit_trail", "decisions", "reports", "risk_flags",
-                      "scores", "responses", "criteria", "documents",
-                      "bids", "tenders"):
+        for table in (
+            "audit_trail",
+            "decisions",
+            "reports",
+            "risk_flags",
+            "scores",
+            "responses",
+            "criteria",
+            "documents",
+            "bids",
+            "tenders",
+        ):
             conn.execute(f"DELETE FROM {table}")
     result = _seed_if_empty()
     return {"reseeded": True, **result}
 
 
 @app.get("/api/v1/admin/seed-status")
-async def seed_status() -> dict:
+async def seed_status() -> dict[str, Any]:
     """Check whether the DB has been seeded and how many tenders/bids exist."""
     db = get_db()
     tenders = db.list_tenders()
@@ -189,7 +211,7 @@ async def index() -> str:
 
 
 @app.get("/api/v1/open_notices")
-async def open_notices_endpoint(country_code: str = "KE") -> dict:
+async def open_notices_endpoint(country_code: str = "KE") -> dict[str, Any]:
     """Proxy to the MCP `open_notices` tool — so the Next.js frontend
     can call it via the FastAPI service without speaking MCP.
 
@@ -197,6 +219,7 @@ async def open_notices_endpoint(country_code: str = "KE") -> dict:
     the stored tender + criteria."""
     from .db import get_db
     from .models import CriterionCategory
+
     db = get_db()
     tenders = [t for t in db.list_tenders() if t.country_code == country_code]
     notices = []
@@ -204,21 +227,23 @@ async def open_notices_endpoint(country_code: str = "KE") -> dict:
         criteria = db.list_criteria(t.id)
         eligibility = [c for c in criteria if c.category == CriterionCategory.ELIGIBILITY]
         mandatory = [c for c in criteria if c.mandatory]
-        notices.append({
-            "tender_id": t.id,
-            "title": t.title,
-            "issuer": t.issuer,
-            "country_code": t.country_code,
-            "ingested_at": t.ingested_at.isoformat(),
-            "criteria_count": len(criteria),
-            "eligibility_checklist": [
-                {"criterion": c.name, "description": c.description} for c in eligibility
-            ],
-            "mandatory_documents": [
-                {"document": c.name, "description": c.description} for c in mandatory
-            ],
-            "apply_via": f"Call `ingest_bid` with tender_id={t.id} once you have prepared the mandatory documents.",
-        })
+        notices.append(
+            {
+                "tender_id": t.id,
+                "title": t.title,
+                "issuer": t.issuer,
+                "country_code": t.country_code,
+                "ingested_at": t.ingested_at.isoformat(),
+                "criteria_count": len(criteria),
+                "eligibility_checklist": [
+                    {"criterion": c.name, "description": c.description} for c in eligibility
+                ],
+                "mandatory_documents": [
+                    {"document": c.name, "description": c.description} for c in mandatory
+                ],
+                "apply_via": f"Call `ingest_bid` with tender_id={t.id} once you have prepared the mandatory documents.",
+            }
+        )
     return {
         "country_code": country_code,
         "notices": notices,
@@ -232,7 +257,7 @@ async def open_notices_endpoint(country_code: str = "KE") -> dict:
 
 
 @app.get("/api/v1/tenders")
-async def list_tenders() -> dict:
+async def list_tenders() -> dict[str, Any]:
     db = get_db()
     tenders = db.list_tenders()
     return {
@@ -250,8 +275,55 @@ async def list_tenders() -> dict:
     }
 
 
-@app.get("/api/v1/tenders/{tender_id}")
-async def get_tender(tender_id: str) -> dict:
+def _serialize_report(db: Database, report: Report | None) -> dict[str, Any] | None:
+    """Return the report shape consumed by the Next.js review UI."""
+    if report is None:
+        return None
+
+    bids = []
+    for bid in report.bids:
+        scores = db.list_scores(report.tender_id, bid.bid_id)
+        risks = db.list_risk_flags(bid.bid_id)
+        bids.append(
+            {
+                "bid_id": bid.bid_id,
+                "bidder_name": bid.bidder_name,
+                "total_score": bid.total_score,
+                "weighted_score": bid.weighted_score,
+                "recommendation": bid.recommendation,
+                "recommendation_rationale": bid.recommendation_rationale,
+                "scores": [
+                    {
+                        "score": score.score,
+                        "rationale": score.rationale,
+                        "citation_tender_paragraph": score.citation_tender.paragraph_text,
+                        "citation_bid_paragraph": score.citation_bid.paragraph_text,
+                    }
+                    for score in scores
+                ],
+                "risk_flags": [
+                    {
+                        "risk_type": risk.risk_type,
+                        "severity": risk.severity,
+                        "description": risk.description,
+                        "citation_paragraph": risk.citation.paragraph_text,
+                    }
+                    for risk in risks
+                ],
+            }
+        )
+
+    return {
+        "id": str(report.id),
+        "tender_id": report.tender_id,
+        "generated_at": report.generated_at.isoformat(),
+        "ai_generated": report.ai_generated,
+        "bids": bids,
+    }
+
+
+@app.get("/api/v1/tenders/{tender_id}", response_model=None)
+async def get_tender(tender_id: str) -> dict[str, Any] | JSONResponse:
     db = get_db()
     tender = db.get_tender(tender_id)
     if tender is None:
@@ -260,29 +332,6 @@ async def get_tender(tender_id: str) -> dict:
     report = db.get_latest_report(tender_id)
     decisions = db.list_decisions(tender_id)
     audit = db.list_audit(tender_id)
-
-    # Enrich the report with per-bid `scores` (the BidEvaluation model
-    # only carries `risk_flags`, not scores — the scores live in the DB
-    # separately by bid_id). The Next.js BidCard component reads
-    # `bid.scores` and would throw TypeError on undefined otherwise.
-    report_dict = None
-    if report is not None:
-        report_dict = report.model_dump(mode="json")
-        for bid_eval in report_dict.get("bids", []):
-            bid_id = bid_eval.get("bid_id")
-            if bid_id:
-                scores = db.list_scores(tender_id, bid_id)
-                bid_eval["scores"] = [
-                    {
-                        "score": s.score,
-                        "rationale": s.rationale,
-                        "citation_tender_paragraph": s.citation_tender.paragraph_text,
-                        "citation_bid_paragraph": s.citation_bid.paragraph_text,
-                    }
-                    for s in scores
-                ]
-            else:
-                bid_eval["scores"] = []
 
     return {
         "tender": {
@@ -296,7 +345,7 @@ async def get_tender(tender_id: str) -> dict:
             {"id": b.id, "bidder_name": b.bidder_name, "ingested_at": b.ingested_at.isoformat()}
             for b in bids
         ],
-        "report": report_dict,
+        "report": _serialize_report(db, report),
         "decisions": [
             {
                 "id": d.id,
@@ -312,6 +361,46 @@ async def get_tender(tender_id: str) -> dict:
     }
 
 
+@app.get("/api/v1/tenders/{tender_id}/audit", response_model=None)
+async def get_audit_trail(tender_id: str) -> dict[str, Any] | JSONResponse:
+    """Return every AI/tool proposal and human decision for a tender."""
+    db = get_db()
+    if db.get_tender(tender_id) is None:
+        return JSONResponse({"error": "tender not found"}, status_code=404)
+
+    entries = db.list_audit(tender_id)
+    decisions = db.list_decisions(tender_id)
+    return {
+        "tender_id": tender_id,
+        "ai_proposals": [
+            {
+                "id": entry.id,
+                "tender_id": entry.tender_id,
+                "bid_id": entry.bid_id,
+                "entry_kind": entry.entry_kind,
+                "actor": entry.actor,
+                "actor_kind": entry.actor_kind.value,
+                "payload": entry.payload,
+                "timestamp": entry.timestamp.isoformat(),
+            }
+            for entry in entries
+            if entry.entry_kind in ("ai_proposal", "tool_call")
+        ],
+        "human_decisions": [
+            {
+                "id": decision.id,
+                "bid_id": decision.bid_id,
+                "decision": decision.decision.value,
+                "decided_by": decision.decided_by,
+                "decided_at": decision.decided_at.isoformat(),
+                "rationale": decision.rationale,
+            }
+            for decision in decisions
+        ],
+        "note": "AI proposals are stamped agent; decisions require a human principal.",
+    }
+
+
 # ---------------------------------------------------------------------------
 # API — record a decision (HUMAN-ONLY)
 # ---------------------------------------------------------------------------
@@ -321,12 +410,12 @@ class DecisionRequest(BaseModel):
     bid_id: str
     decision: Literal["accept", "reject", "needs_review"]
     rationale: str = Field(min_length=10)
-    principal_id: str = "officer-demo"
+    principal_id: str = Field(default="officer-demo", min_length=1)
     principal_kind: Literal["human", "agent"] = "human"
 
 
-@app.post("/api/v1/tenders/{tender_id}/decisions")
-async def record_decision(tender_id: str, req: DecisionRequest) -> dict:
+@app.post("/api/v1/tenders/{tender_id}/decisions", response_model=None)
+async def record_decision(tender_id: str, req: DecisionRequest) -> dict[str, Any] | JSONResponse:
     """Record a procurement officer's decision on a bid.
 
     HUMAN-ONLY — refuses `principal_kind='agent'`.
@@ -345,6 +434,9 @@ async def record_decision(tender_id: str, req: DecisionRequest) -> dict:
     # Validate the tender + bid exist
     if db.get_tender(tender_id) is None:
         return JSONResponse({"error": "tender not found"}, status_code=404)
+    bid = db.get_bid(req.bid_id)
+    if bid is None or bid.tender_id != tender_id:
+        return JSONResponse({"error": "bid not found for tender"}, status_code=404)
 
     d = Decision(
         id=new_id("decision"),
@@ -399,8 +491,8 @@ class IngestTenderRequest(BaseModel):
     country_code: str = "KE"
 
 
-@app.post("/api/v1/tenders")
-async def ingest_tender(req: IngestTenderRequest) -> dict:
+@app.post("/api/v1/tenders", response_model=None)
+async def ingest_tender(req: IngestTenderRequest) -> dict[str, Any] | JSONResponse:
     db = get_db()
     p = Path(req.path)
     if not p.exists():
@@ -416,14 +508,13 @@ async def ingest_tender(req: IngestTenderRequest) -> dict:
         country_code=req.country_code,
         document_path=str(p),
     )
-    db.save_tender(t)
-
     doc = ingest_document(
         doc_id=f"doc-tender-{tender_id}",
         kind="tender",
         parent_id=tender_id,
         source_path=str(p),
     )
+    db.save_tender(t)
     db.save_document(doc)
     return {"tender_id": tender_id, "paragraphs": len(doc.paragraphs)}
 
@@ -434,8 +525,8 @@ class IngestBidRequest(BaseModel):
     bidder_name: str
 
 
-@app.post("/api/v1/bids")
-async def ingest_bid(req: IngestBidRequest) -> dict:
+@app.post("/api/v1/bids", response_model=None)
+async def ingest_bid(req: IngestBidRequest) -> dict[str, Any] | JSONResponse:
     db = get_db()
     if db.get_tender(req.tender_id) is None:
         return JSONResponse({"error": "tender not found"}, status_code=404)
@@ -453,13 +544,13 @@ async def ingest_bid(req: IngestBidRequest) -> dict:
         bidder_name=req.bidder_name,
         document_path=str(p),
     )
-    db.save_bid(b)
     doc = ingest_document(
         doc_id=f"doc-bid-{bid_id}",
         kind="bid",
         parent_id=bid_id,
         source_path=str(p),
     )
+    db.save_bid(b)
     db.save_document(doc)
     return {"bid_id": bid_id, "paragraphs": len(doc.paragraphs)}
 
@@ -468,22 +559,28 @@ class EvaluateRequest(BaseModel):
     tender_id: str
 
 
-@app.post("/api/v1/evaluate")
-async def evaluate(req: EvaluateRequest) -> dict:
+@app.post("/api/v1/evaluate", response_model=None)
+async def evaluate(req: EvaluateRequest) -> dict[str, Any] | JSONResponse:
     """Trigger the agentic evaluation."""
     from .mcp_server import evaluate_bids
 
     result = await evaluate_bids(tender_id=req.tender_id)
     import json
 
-    return json.loads(result) if isinstance(result, str) else result
+    data: Any = json.loads(result) if isinstance(result, str) else result
+    if not isinstance(data, dict):
+        return JSONResponse({"error": "evaluation returned an invalid response"}, status_code=502)
+    if "error" in data:
+        status_code = 404 if "not found" in str(data["error"]) else 400
+        return JSONResponse(data, status_code=status_code)
+    return data
 
 
 @app.get("/api/v1/healthz")
-async def healthz() -> dict:
+async def healthz() -> dict[str, str]:
     return {
         "status": "ok",
         "service": "uwazi-review-ui",
         "version": "0.1.0",
-        "now": datetime.now(timezone.utc).isoformat(),
+        "now": datetime.now(UTC).isoformat(),
     }

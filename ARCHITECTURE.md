@@ -58,7 +58,7 @@ The citation validator performs five checks (existence, pointer, span support, c
 
 ## Audit trail
 
-Every tool call + every AI proposal + every human decision produces an `AuditEntry` with `actor`, `actor_kind` (`human` or `agent`), `payload`, and `timestamp`. The trail is queryable via `get_audit_trail` and exportable as a signed PDF for the procurement archive — the artifact a real audit office demands.
+Every tool call + every AI proposal + every human decision produces an `AuditEntry` with `actor`, `actor_kind` (`human` or `agent`), `payload`, and `timestamp`. The trail is queryable via `get_audit_trail`, the HTTP API, and the review UI. Signed-PDF export remains future work.
 
 ## What is unfinished (honest list)
 
