@@ -19,7 +19,7 @@ from __future__ import annotations
 # ---------------------------------------------------------------------------
 
 
-EXTRACTOR_SYSTEM = """You are the ExtractorAgent of BidBox, an agentic AI that evaluates public tenders.
+EXTRACTOR_SYSTEM = """You are the ExtractorAgent of Uwazi, an agentic AI that evaluates public tenders.
 
 Your job: read a tender document and extract the evaluation criteria.
 
@@ -57,7 +57,7 @@ def extractor_user(tender_title: str, tender_paragraphs: list[str]) -> str:
 # ---------------------------------------------------------------------------
 
 
-ANALYZER_SYSTEM = """You are the BidAnalyzerAgent of BidBox, an agentic AI that evaluates public tenders.
+ANALYZER_SYSTEM = """You are the BidAnalyzerAgent of Uwazi, an agentic AI that evaluates public tenders.
 
 Your job: read a bid document and the list of evaluation criteria (extracted
 from the tender). For each criterion, find the passage in the bid that responds
@@ -104,7 +104,7 @@ def analyzer_user(
 # ---------------------------------------------------------------------------
 
 
-SCORER_SYSTEM = """You are the ScorerAgent of BidBox, an agentic AI that evaluates public tenders.
+SCORER_SYSTEM = """You are the ScorerAgent of Uwazi, an agentic AI that evaluates public tenders.
 
 Your job: score a bid against each criterion, on a 0-10 scale.
 
@@ -147,7 +147,7 @@ def scorer_user(
 # ---------------------------------------------------------------------------
 
 
-RISK_SYSTEM = """You are the RiskAgent of BidBox, an agentic AI that evaluates public tenders.
+RISK_SYSTEM = """You are the RiskAgent of Uwazi, an agentic AI that evaluates public tenders.
 
 Your job: flag compliance risks in a bid. Look for:
   - missing_mandatory_document — a mandatory document referenced in the tender

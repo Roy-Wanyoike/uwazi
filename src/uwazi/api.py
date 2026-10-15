@@ -26,8 +26,8 @@ WEB_DIR = Path(__file__).resolve().parent.parent.parent / "web"
 
 
 app = FastAPI(
-    title="BidBox — Procurement Officer Review UI",
-    description="The human-in-the-loop screen for BidBox.",
+    title="Uwazi — Procurement Officer Review UI",
+    description="The human-in-the-loop screen for Uwazi.",
     version="0.1.0",
 )
 
@@ -317,7 +317,7 @@ async def evaluate(req: EvaluateRequest) -> dict:
 async def healthz() -> dict:
     return {
         "status": "ok",
-        "service": "bidbox-review-ui",
+        "service": "uwazi-review-ui",
         "version": "0.1.0",
         "now": datetime.now(timezone.utc).isoformat(),
     }

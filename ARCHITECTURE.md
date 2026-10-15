@@ -1,14 +1,14 @@
-# ARCHITECTURE — BidBox (one page)
+# ARCHITECTURE — Uwazi (one page)
 
 > Required by the challenge brief: *"ARCHITECTURE.md — one page. Agent shape, MCP servers built versus borrowed, and why."*
 
 ## Agent shape
 
-BidBox is a LangGraph state machine with 5 nodes and 4 conditional edges. The agent plans, calls tools, recovers from failure, and stops at a hard human-in-the-loop gate.
+Uwazi is a LangGraph state machine with 5 nodes and 4 conditional edges. The agent plans, calls tools, recovers from failure, and stops at a hard human-in-the-loop gate.
 
 ```
                     ┌──────────────────────────────────────────┐
-                    │           BIDBOX LANGGRAPH GRAPH          │
+                    │           UWAZI LANGGRAPH GRAPH          │
                     └──────────────────────────────────────────┘
 
 START → extract_criteria → analyze_bids → score_bids → flag_risks → compose_report → END
@@ -23,7 +23,7 @@ Nodes (each is an async function of state):
   compose_report    OrchestratorAgent  pure Python (no LLM)
 ```
 
-State is a single `TypedDict` (`BidboxState`) that flows through every node. Each node returns a partial dict that LangGraph merges. The graph is compiled with `MemorySaver` checkpointer — an interrupted evaluation can be resumed from the last checkpoint (not yet wired into the UI; see *what's unfinished* in the README).
+State is a single `TypedDict` (`UwaziState`) that flows through every node. Each node returns a partial dict that LangGraph merges. The graph is compiled with `MemorySaver` checkpointer — an interrupted evaluation can be resumed from the last checkpoint (not yet wired into the UI; see *what's unfinished* in the README).
 
 **Recovery path:** if `extract_criteria` returns an empty list (the LLM found no criteria), the conditional edge skips `analyze_bids → score_bids → flag_risks` and jumps to `compose_report`, which produces a report with `errors=["extractor: no criteria"]` rather than crashing. Per-bid failures in `analyze_bids` / `score_bids` / `flag_risks` are caught, logged to `state["errors"]`, and the bid is short-circuited — the rest of the bids continue.
 
@@ -31,7 +31,7 @@ State is a single `TypedDict` (`BidboxState`) that flows through every node. Eac
 
 | MCP server | Source | Why |
 |---|---|---|
-| **BidBox MCP server** (`src/bidbox/mcp_server.py`) | **Built.** FastMCP on stdio. 10 tools: `list_tenders`, `fetch_tender_notice`, `ingest_tender`, `ingest_bid`, `evaluate_bids`, `get_report`, `open_notices`, `explain_tender_in_plain_language`, `record_officer_decision` (HUMAN-ONLY), `get_audit_trail`. | The challenge requires our own server with ≥3 tools; this is the protocol surface for the entire workflow. |
+| **Uwazi MCP server** (`src/uwazi/mcp_server.py`) | **Built.** FastMCP on stdio. 10 tools: `list_tenders`, `fetch_tender_notice`, `ingest_tender`, `ingest_bid`, `evaluate_bids`, `get_report`, `open_notices`, `explain_tender_in_plain_language`, `record_officer_decision` (HUMAN-ONLY), `get_audit_trail`. | The challenge requires our own server with ≥3 tools; this is the protocol surface for the entire workflow. |
 | **Official MCP fetch server** (`mcp-server-fetch`) | **Borrowed.** Anthropic / MCP maintainers. | Handles HTTP redirects, gzip, charset detection, HTML stripping, robots.txt respect, and SSRF protection — features that would take ~500 LOC to reproduce. Used by `fetch_tender_notice` to pull tender notices from public procurement portals. Any upstream improvement lands in our agent without a single PR. |
 
 **Orchestration:** LangGraph (open-source, Apache 2.0). Why: it is the de-facto open-source orchestrator for agent workflows with named-tool calls. Strangers reading the code recognise the shape. It supports conditional edges, recovery paths, and human-in-the-loop interrupts.

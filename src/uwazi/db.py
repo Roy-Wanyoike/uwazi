@@ -1,4 +1,4 @@
-"""SQLite storage layer for BidBox.
+"""SQLite storage layer for Uwazi.
 
 The schema is the architectural contract — see ARCHITECTURE.md §5
 for the human-in-the-loop boundary.

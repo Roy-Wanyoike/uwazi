@@ -1,4 +1,4 @@
-# EVALS — BidBox Evaluation Suite
+# EVALS — Uwazi Evaluation Suite
 
 > Required by the challenge brief: *"EVALS.md — eight or more test tasks with pass and fail results, plus one failure you did not fix and what you would try next."*
 
@@ -61,7 +61,7 @@ These are gaps in the test suite I am calling out honestly:
 
 - **Real LLM calls.** Every test runs in STUB mode (deterministic canned responses). The test suite cannot verify that the agent produces correct scores against a real open-weights model because that requires a network call. The `gateway.py` STUB returns canned JSON shaped exactly like the real gateway, so the rest of the pipeline is exercised, but the LLM's quality is unverified by automated tests.
 
-- **PDF ingestion end-to-end.** `test_pdf.py` covers the Markdown path and the paragraph splitter, but does not exercise `ingest_pdf` against a real PDF. The reason: `pdfplumber` needs an actual binary file, and I did not want to commit a binary PDF to the repo. To verify manually: `python -c "from bidbox.pdf import ingest_pdf; print(len(ingest_pdf('/path/to/real.pdf')))"`.
+- **PDF ingestion end-to-end.** `test_pdf.py` covers the Markdown path and the paragraph splitter, but does not exercise `ingest_pdf` against a real PDF. The reason: `pdfplumber` needs an actual binary file, and I did not want to commit a binary PDF to the repo. To verify manually: `python -c "from uwazi.pdf import ingest_pdf; print(len(ingest_pdf('/path/to/real.pdf')))"`.
 
 - **Run-to-run variation on the open-weights model.** The brief asks: *"Is run-to-run variation measured or hidden?"* In STUB mode the variation is zero. With a real model and `temperature=0.0`, variation should be small but non-zero (provider-side batching). I have not measured it. **This is the one failure I did not fix — see below.**
 

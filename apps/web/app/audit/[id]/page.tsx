@@ -31,9 +31,9 @@ async function getAuditTrail(tenderId: string): Promise<AuditTrail> {
   // The audit trail endpoint is currently on the MCP server, not FastAPI.
   // For now, the web UI shows the decisions stored via FastAPI.
   // To see the full audit trail (incl. AI proposals), call:
-  //   python -m bidbox.cli audit --tender-id <id>
+  //   python -m uwazi.cli audit --tender-id <id>
   const res = await fetch(
-    `${process.env.BIDBOX_API_URL ?? ""}/api/v1/tenders/${tenderId}`,
+    `${process.env.UWAZI_API_URL ?? ""}/api/v1/tenders/${tenderId}`,
     { cache: "no-store" },
   );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -42,7 +42,7 @@ async function getAuditTrail(tenderId: string): Promise<AuditTrail> {
     tender_id: tenderId,
     ai_proposals: [],
     human_decisions: data.decisions ?? [],
-    note: "AI proposals are queryable via the MCP `get_audit_trail` tool. Run `python -m bidbox.cli audit --tender-id <id>` to see them.",
+    note: "AI proposals are queryable via the MCP `get_audit_trail` tool. Run `python -m uwazi.cli audit --tender-id <id>` to see them.",
   };
 }
 
@@ -116,7 +116,7 @@ export default async function AuditPage({ params }: { params: Promise<{ id: stri
             </h2>
             <div className="card" style={{ padding: 16 }}>
               <p className="bid-meta">{trail.note}</p>
-              <pre style={{ marginTop: 12 }}>{`python -m bidbox.cli audit --tender-id ${id}`}</pre>
+              <pre style={{ marginTop: 12 }}>{`python -m uwazi.cli audit --tender-id ${id}`}</pre>
             </div>
           </section>
         </>

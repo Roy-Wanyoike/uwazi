@@ -1,4 +1,4 @@
-"""BidBox — an agentic AI on MCP that evaluates public tenders.
+"""Uwazi — an agentic AI on MCP that evaluates public tenders.
 
 AI recommends, the procurement officer decides.
 """

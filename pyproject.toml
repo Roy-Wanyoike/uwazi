@@ -1,12 +1,12 @@
 # ───────────────────────────────────────────────────────────
-# BidBox — Python dependencies
+# Uwazi — Python dependencies
 # ───────────────────────────────────────────────────────────
 [build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "bidbox"
+name = "uwazi"
 version = "0.1.0"
 description = "An agentic AI on MCP that evaluates public tenders for African procurement offices. AI recommends, the officer decides."
 readme = "README.md"
@@ -62,21 +62,21 @@ dev = [
 ]
 
 [project.scripts]
-bidbox = "bidbox.cli:main"
+uwazi = "uwazi.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-bidbox = ["py.typed", "web/*.html"]
+uwazi = ["py.typed", "web/*.html"]
 
 # Vercel — FastAPI entrypoint hint.
 # Vercel's framework detector looks for main.py / app.py / index.py /
-# server.py / wsgi.py / asgi.py at the service root. BidBox's FastAPI
-# app lives at src/bidbox/api.py (variable: app). This hint tells Vercel
+# server.py / wsgi.py / asgi.py at the service root. Uwazi's FastAPI
+# app lives at src/uwazi/api.py (variable: app). This hint tells Vercel
 # where to find it.
 [tool.vercel]
-entrypoint = "src.bidbox.api:app"
+entrypoint = "src.uwazi.api:app"
 
 # ───────────────────────────────────────────────────────────
 # Ruff — linter + formatter
@@ -111,7 +111,7 @@ ignore = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "-ra --strict-markers --cov=bidbox --cov-report=term-missing"
+addopts = "-ra --strict-markers --cov=uwazi --cov-report=term-missing"
 
 # ───────────────────────────────────────────────────────────
 # Mypy

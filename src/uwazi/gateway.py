@@ -1,6 +1,6 @@
 """Provider-agnostic LLM gateway.
 
-BidBox uses the `openai` SDK pointed at any OpenAI-compatible endpoint:
+Uwazi uses the `openai` SDK pointed at any OpenAI-compatible endpoint:
 OpenAI, Qwen via ModelScope, OpenRouter, or a local Llama server (vllm).
 
 When `OPENAI_API_KEY` is unset, the gateway runs in STUB mode: it

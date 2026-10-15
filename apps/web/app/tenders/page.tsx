@@ -17,14 +17,14 @@ export default async function TendersPage() {
     <div className="container" style={{ paddingTop: 32 }}>
       <header style={{ marginBottom: 24 }}>
         <h1 style={{ margin: 0, fontSize: 28 }}>Tenders</h1>
-        <p className="bid-meta">Every tender ingested into BidBox. Click one to view the ranked evaluation.</p>
+        <p className="bid-meta">Every tender ingested into Uwazi. Click one to view the ranked evaluation.</p>
       </header>
 
       {error && (
         <div className="card" style={{ borderColor: "var(--crit)" }}>
           <h3 style={{ marginTop: 0, color: "var(--crit)" }}>Cannot reach the API</h3>
           <p className="bid-meta">{error}</p>
-          <p className="bid-meta">Make sure the FastAPI backend is running: <code>python -m bidbox.cli serve</code></p>
+          <p className="bid-meta">Make sure the FastAPI backend is running: <code>python -m uwazi.cli serve</code></p>
         </div>
       )}
 

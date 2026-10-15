@@ -13,7 +13,7 @@
           "type": "service",
           "service": "api",
           "format": "url",
-          "env": "BIDBOX_API_URL"
+          "env": "UWAZI_API_URL"
         }
       ]
     }

@@ -11,9 +11,9 @@ from pathlib import Path
 
 import pytest
 
-from bidbox import db as db_module
-from bidbox.db import in_memory_db
-from bidbox.mcp_server import (
+from uwazi import db as db_module
+from uwazi.db import in_memory_db
+from uwazi.mcp_server import (
     evaluate_bids,
     get_audit_trail,
     get_report,
@@ -189,7 +189,7 @@ def test_record_officer_decision_agent_refused() -> None:
         bid_id="bid-aquaforce",
         decision="accept",
         rationale="agent attempt — should be refused",
-        principal_id="bidbox-agent",
+        principal_id="uwazi-agent",
         principal_kind="agent",
     )
     d = json.loads(out)

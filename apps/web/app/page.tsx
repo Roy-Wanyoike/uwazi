@@ -17,7 +17,7 @@ export default function HomePage() {
             <Link href="/tenders" className="btn btn-primary">View tenders →</Link>
             <Link href="/notices" className="btn">Open Notices (citizens)</Link>
             <a
-              href="https://github.com/Roy-Wanyoike/bidbox"
+              href="https://github.com/Roy-Wanyoike/uwazi"
               target="_blank"
               rel="noreferrer"
               className="btn"
@@ -106,13 +106,13 @@ export default function HomePage() {
         <div style={{ marginTop: 48, padding: 24, background: "var(--bg-subtle)", borderRadius: 12 }}>
           <h3 style={{ marginTop: 0 }}>Run it in one command</h3>
           <pre style={{ margin: 0 }}>
-{`git clone https://github.com/Roy-Wanyoike/bidbox.git
-cd bidbox
+{`git clone https://github.com/Roy-Wanyoike/uwazi.git
+cd uwazi
 ./run-demo.sh    # venv + install + seed + evaluate + UI`}
           </pre>
           <p className="bid-meta" style={{ marginTop: 16 }}>
             Or read the{" "}
-            <a href="https://github.com/Roy-Wanyoike/bidbox/blob/main/README.md" target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>
+            <a href="https://github.com/Roy-Wanyoike/uwazi/blob/main/README.md" target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>
               README
             </a>{" "}
             for the long version.

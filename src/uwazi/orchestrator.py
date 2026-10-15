@@ -1,6 +1,6 @@
 """LangGraph-based orchestrator — the agent plans, calls tools, recovers.
 
-This module is the open-source-orchestration layer of BidBox. It uses
+This module is the open-source-orchestration layer of Uwazi. It uses
 LangGraph (https://github.com/langchain-ai/langgraph) to express the
 evaluation workflow as a StateGraph. This is REQUIRED by the challenge
 brief — "Open-source orchestration. LangGraph, CrewAI, Pydantic AI,
@@ -77,7 +77,7 @@ from .pdf import citation_for
 # ---------------------------------------------------------------------------
 
 
-class BidboxState(TypedDict, total=False):
+class UwaziState(TypedDict, total=False):
     """The state object passed through every node of the graph.
 
     Every node receives this dict and returns a partial dict that
@@ -111,11 +111,11 @@ class BidboxState(TypedDict, total=False):
 # ---------------------------------------------------------------------------
 
 
-class BidboxGraph:
+class UwaziGraph:
     """Builds and runs the LangGraph workflow.
 
     Usage:
-        graph = BidboxGraph(gateway)
+        graph = UwaziGraph(gateway)
         result = await graph.run(ctx)
     """
 
@@ -131,7 +131,7 @@ class BidboxGraph:
     # Node implementations — pure functions of state
     # ------------------------------------------------------------------
 
-    async def _extract_criteria(self, state: BidboxState) -> dict:
+    async def _extract_criteria(self, state: UwaziState) -> dict:
         """Node 1 — extract criteria from the tender."""
         try:
             out = await self._extractor.run(
@@ -142,7 +142,7 @@ class BidboxGraph:
         return {"criteria": out.criteria, "tokens_used": state.get("tokens_used", 0) + out.tokens_used,
                 "cost_cents": str(Decimal(state.get("cost_cents", "0")) + out.cost_cents)}
 
-    async def _analyze_bids(self, state: BidboxState) -> dict:
+    async def _analyze_bids(self, state: UwaziState) -> dict:
         """Node 2 — for each bid, extract responses per criterion."""
         responses: dict[str, list[dict]] = {}
         tokens = state.get("tokens_used", 0)
@@ -173,7 +173,7 @@ class BidboxGraph:
         return {"responses": responses, "tokens_used": tokens, "cost_cents": str(cost),
                 "errors": errors}
 
-    async def _score_bids(self, state: BidboxState) -> dict:
+    async def _score_bids(self, state: UwaziState) -> dict:
         """Node 3 — for each (bid, criterion) pair, produce a score."""
         scores: dict[str, list[dict]] = {}
         tokens = state.get("tokens_used", 0)
@@ -207,7 +207,7 @@ class BidboxGraph:
         return {"scores": scores, "tokens_used": tokens, "cost_cents": str(cost),
                 "errors": errors}
 
-    async def _flag_risks(self, state: BidboxState) -> dict:
+    async def _flag_risks(self, state: UwaziState) -> dict:
         """Node 4 — for each bid, flag compliance risks."""
         risk_flags: dict[str, list[dict]] = {}
         tokens = state.get("tokens_used", 0)
@@ -248,7 +248,7 @@ class BidboxGraph:
         return {"risk_flags": risk_flags, "tokens_used": tokens, "cost_cents": str(cost),
                 "errors": errors}
 
-    async def _compose_report(self, state: BidboxState) -> dict:
+    async def _compose_report(self, state: UwaziState) -> dict:
         """Node 5 — compose the final ranked report."""
         criteria = state.get("criteria", [])
         scores = state.get("scores", {})
@@ -317,7 +317,7 @@ class BidboxGraph:
     # Edge conditions — recovery paths
     # ------------------------------------------------------------------
 
-    def _route_after_extract(self, state: BidboxState) -> str:
+    def _route_after_extract(self, state: UwaziState) -> str:
         """If extractor returned no criteria, skip to end with an error."""
         if not state.get("criteria"):
             return "compose_report"
@@ -328,7 +328,7 @@ class BidboxGraph:
     # ------------------------------------------------------------------
 
     def _build(self):
-        graph = StateGraph(BidboxState)
+        graph = StateGraph(UwaziState)
         graph.add_node("extract_criteria", self._extract_criteria)
         graph.add_node("analyze_bids", self._analyze_bids)
         graph.add_node("score_bids", self._score_bids)
@@ -360,7 +360,7 @@ class BidboxGraph:
         to persist.
         """
         config = {"configurable": {"thread_id": ctx.tender.id}}
-        initial_state: BidboxState = {
+        initial_state: UwaziState = {
             "tender": {
                 "id": ctx.tender.id,
                 "title": ctx.tender.title,
@@ -542,7 +542,7 @@ class OrchestratorAgent:
     version = "0.2.0"
 
     def __init__(self, gateway: Gateway) -> None:
-        self._graph = BidboxGraph(gateway)
+        self._graph = UwaziGraph(gateway)
 
     async def run(self, ctx: OrchestratorContext) -> OrchestratorResult:
         return await self._graph.run(ctx)

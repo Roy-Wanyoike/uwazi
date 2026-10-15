@@ -6,8 +6,8 @@ an agent. The schema (CHECK + trigger) is the second line of defense.
 
 Run the server:
 
-    python -m bidbox.mcp_server                    # stdio (default)
-    MCP_TRANSPORT=sse python -m bidbox.mcp_server   # HTTP/SSE
+    python -m uwazi.mcp_server                    # stdio (default)
+    MCP_TRANSPORT=sse python -m uwazi.mcp_server   # HTTP/SSE
 
 Connect from any MCP-compatible client (Claude Desktop, the MCP CLI,
 a custom Python client, etc.).
@@ -51,9 +51,9 @@ from .pdf import ingest_document
 
 
 mcp = FastMCP(
-    "bidbox",
+    "uwazi",
     instructions=(
-        "BidBox — an agentic AI that evaluates public tenders for African "
+        "Uwazi — an agentic AI that evaluates public tenders for African "
         "procurement offices. AI recommends, the procurement officer decides.\n\n"
         "Tools:\n"
         "  - list_tenders\n"
@@ -106,7 +106,7 @@ async def fetch_tender_notice(url: str, tender_id: str | None = None, title: str
     """Fetch a tender notice from a public procurement portal URL.
 
     This tool uses the official `mcp-server-fetch` MCP server — a server
-    BidBox did NOT write — to retrieve the URL. This satisfies the
+    Uwazi did NOT write — to retrieve the URL. This satisfies the
     challenge brief's requirement: *"One MCP server you did not write.
     Community, official, or vendor."*
 
@@ -203,7 +203,7 @@ async def fetch_tender_notice(url: str, tender_id: str | None = None, title: str
         "title": title,
         "url": url,
         "paragraphs": len(doc.paragraphs),
-        "external_mcp_server": "mcp-server-fetch (official, not written by BidBox)",
+        "external_mcp_server": "mcp-server-fetch (official, not written by Uwazi)",
         "note": "Tender ingested. Call evaluate_bids after ingesting bids.",
     }, indent=2)
 
@@ -217,7 +217,7 @@ async def fetch_tender_notice(url: str, tender_id: str | None = None, title: str
 def open_notices(country_code: str = "KE") -> str:
     """Return all active tenders in PLAIN LANGUAGE for citizens and small suppliers.
 
-    This is the citizen-facing layer of BidBox — it makes the public
+    This is the citizen-facing layer of Uwazi — it makes the public
     procurement pipeline legible. For every tender, it returns:
       - The title in plain English (not legalese)
       - The deadline in days-from-now + a human date
@@ -310,7 +310,7 @@ async def explain_tender_in_plain_language(tender_id: str, audience: str = "smal
     from .prompts import EXTRACTOR_SYSTEM  # reuse structure
     gateway = build_gateway(settings.llm)
 
-    system_prompt = f"""You are the PlainLanguageAgent of BidBox. Translate a tender document into plain English for {audience}.
+    system_prompt = f"""You are the PlainLanguageAgent of Uwazi. Translate a tender document into plain English for {audience}.
 
 HARD RULES:
 1. Output ONLY valid JSON: {{"summary": str, "key_dates": [{{"date": str, "what": str}}], "who_can_apply": [str], "what_to_prepare": [str], "citations": [{{"claim": str, "paragraph": int}}]}}

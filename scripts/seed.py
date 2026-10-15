@@ -1,15 +1,15 @@
-"""Seed the sample tender + 3 bids into BidBox.
+"""Seed the sample tender + 3 bids into Uwazi.
 
 Usage:
     python scripts/seed.py
 
 This script ingests the synthetic Makueni Water Reticulation tender and
 the three synthetic bids (AquaForce, HydroTech, Sahara Civils) into
-the BidBox database, using the same MCP tools the agent uses.
+the Uwazi database, using the same MCP tools the agent uses.
 
 After seeding, run:
-    python -m bidbox.cli evaluate --tender-id makueni-water-2026
-    python -m bidbox.cli serve    # http://localhost:8000
+    python -m uwazi.cli evaluate --tender-id makueni-water-2026
+    python -m uwazi.cli serve    # http://localhost:8000
 
 The sample is intentionally designed to exercise the four hard cases:
 
@@ -27,7 +27,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from bidbox.mcp_server import ingest_bid, ingest_tender  # noqa: E402
+from uwazi.mcp_server import ingest_bid, ingest_tender  # noqa: E402
 
 
 SAMPLES = ROOT / "samples"
@@ -43,7 +43,7 @@ BIDS = [
 
 async def seed() -> int:
     print("=" * 60)
-    print("BidBox — seeding sample data")
+    print("Uwazi — seeding sample data")
     print("=" * 60)
 
     # --- Tender ---
@@ -71,8 +71,8 @@ async def seed() -> int:
     print("\n" + "=" * 60)
     print(f"Seeded. Tender ID: {TENDER_ID}")
     print("Next steps:")
-    print(f"  1. python -m bidbox.cli evaluate --tender-id {TENDER_ID}")
-    print(f"  2. python -m bidbox.cli serve    # → http://localhost:8000")
+    print(f"  1. python -m uwazi.cli evaluate --tender-id {TENDER_ID}")
+    print(f"  2. python -m uwazi.cli serve    # → http://localhost:8000")
     print("=" * 60)
     return 0
 

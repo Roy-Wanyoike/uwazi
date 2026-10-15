@@ -1,10 +1,10 @@
 /**
- * API client for the BidBox backend.
+ * API client for the Uwazi backend.
  *
- * On Vercel: BIDBOX_API_URL is injected via the `services` binding
+ * On Vercel: UWAZI_API_URL is injected via the `services` binding
  * (see vercel.json — the `web` service binds to the `api` service).
  * On local dev: falls back to http://localhost:8000 (FastAPI dev).
- * The next.config.mjs rewrites /api/* to BIDBOX_API_URL so the browser
+ * The next.config.mjs rewrites /api/* to UWAZI_API_URL so the browser
  * can call the same path on either environment.
  */
 
@@ -139,6 +139,6 @@ export const getOpenNotices = (countryCode: string = "KE") =>
     return {
       country_code: countryCode,
       notices: [],
-      note: "Run `python -m bidbox.cli serve` to start the API, then refresh.",
+      note: "Run `python -m uwazi.cli serve` to start the API, then refresh.",
     };
   });

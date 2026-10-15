@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# run-demo.sh — one-command demo for BidBox.
+# run-demo.sh — one-command demo for Uwazi.
 #
 # The challenge brief says: "A README that gets a stranger running in
 # one command." This is that command.
 #
 # What it does:
 #   1. Creates a Python virtualenv (if missing)
-#   2. Installs BidBox + dependencies
+#   2. Installs Uwazi + dependencies
 #   3. Seeds the sample tender + 3 bids into the SQLite DB
 #   4. Runs the agentic evaluation (LangGraph orchestrator)
 #   5. Demonstrates the human-in-the-loop boundary (refuses an agent principal)
@@ -29,7 +29,7 @@ GREEN=$'\033[0;32m'
 BOLD=$'\033[1m'
 RESET=$'\033[0m'
 
-echo "${BOLD}=== BidBox — one-command demo ===${RESET}"
+echo "${BOLD}=== Uwazi — one-command demo ===${RESET}"
 echo ""
 
 # Step 1: venv
@@ -40,19 +40,19 @@ fi
 source .venv/bin/activate
 
 # Step 2: install
-echo "${GREEN}[2/6]${RESET} Installing BidBox + dependencies (this takes ~1 min on first run)..."
+echo "${GREEN}[2/6]${RESET} Installing Uwazi + dependencies (this takes ~1 min on first run)..."
 pip install -e ".[dev]" -q 2>&1 | tail -2
 
 # Step 3: seed
 echo ""
 echo "${GREEN}[3/6]${RESET} Seeding sample tender + 3 bids..."
-rm -f bidbox.db
+rm -f uwazi.db
 python scripts/seed.py 2>&1 | grep -E "^\[|Seeded|Tender ID"
 
 # Step 4: evaluate
 echo ""
 echo "${GREEN}[4/6]${RESET} Running the agentic evaluation (LangGraph orchestrator)..."
-python -m bidbox.cli evaluate --tender-id makueni-water-2026 2>&1 | python -c "
+python -m uwazi.cli evaluate --tender-id makueni-water-2026 2>&1 | python -c "
 import json, sys
 data = json.load(sys.stdin)
 if 'error' in data:
@@ -72,12 +72,12 @@ else:
 # Step 5: human-in-the-loop
 echo "${GREEN}[5/6]${RESET} Demonstrating the human-in-the-loop boundary..."
 echo "  Attempting to record a decision with principal_kind='agent'..."
-RESULT=$(python -m bidbox.cli decide \
+RESULT=$(python -m uwazi.cli decide \
   --tender-id makueni-water-2026 \
   --bid-id bid-sahara \
   --decision accept \
   --rationale "agent attempt — should be refused" \
-  --principal-id bidbox-agent \
+  --principal-id uwazi-agent \
   --principal-kind agent 2>&1)
 if echo "$RESULT" | grep -q "human-in-the-loop"; then
   echo "  ✓ REFUSED — agents may not record decisions."
@@ -90,10 +90,10 @@ echo ""
 echo "${GREEN}[6/6]${RESET} Starting the procurement officer review UI..."
 echo ""
 echo "  ┌────────────────────────────────────────────────────────────┐"
-echo "  │  BidBox is running. Open http://localhost:8000            │"
+echo "  │  Uwazi is running. Open http://localhost:8000            │"
 echo "  │                                                          │"
 echo "  │  Press Ctrl+C to stop.                                    │"
 echo "  └────────────────────────────────────────────────────────────┘"
 echo ""
 
-exec python -m bidbox.cli serve
+exec python -m uwazi.cli serve

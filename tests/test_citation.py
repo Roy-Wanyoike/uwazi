@@ -5,12 +5,12 @@ being published. If any of its five checks fails, the claim is dropped.
 """
 from __future__ import annotations
 
-from bidbox.citation import (
+from uwazi.citation import (
     filter_valid,
     validate_citation,
     ValidationResult,
 )
-from bidbox.models import Citation
+from uwazi.models import Citation
 
 
 def test_valid_citation_passes() -> None:

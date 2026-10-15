@@ -1,6 +1,6 @@
 <div align="center">
 
-# BidBox
+# Uwazi
 
 ### Open contracting intelligence for African procurement.
 
@@ -22,16 +22,16 @@ Built for the [Agentic AI for Africa Innovation Challenge](https://agentic-afric
 ## One command
 
 ```bash
-git clone https://github.com/Roy-Wanyoike/bidbox.git
-cd bidbox
+git clone https://github.com/Roy-Wanyoike/uwazi.git
+cd uwazi
 ./run-demo.sh
 ```
 
-That's it. The script creates a venv, installs BidBox, seeds a real-shape Makueni County water tender + 3 bids, runs the LangGraph agent, demonstrates the human-in-the-loop boundary, and opens the procurement officer review UI at http://localhost:8000.
+That's it. The script creates a venv, installs Uwazi, seeds a real-shape Makueni County water tender + 3 bids, runs the LangGraph agent, demonstrates the human-in-the-loop boundary, and opens the procurement officer review UI at http://localhost:8000.
 
-## What BidBox does
+## What Uwazi does
 
-A procurement office receives a tender and N bids. Today the evaluation is a 26-day manual exercise — sorting bids, ticking off documents, checking each bidder, comparing prices, writing the report. BidBox turns it into a 30-minute officer-reviewed exercise, with a hard rule: **the agent prepares the file, it never awards the tender.**
+A procurement office receives a tender and N bids. Today the evaluation is a 26-day manual exercise — sorting bids, ticking off documents, checking each bidder, comparing prices, writing the report. Uwazi turns it into a 30-minute officer-reviewed exercise, with a hard rule: **the agent prepares the file, it never awards the tender.**
 
 The workflow:
 
@@ -47,11 +47,11 @@ The workflow:
 5. **`record_officer_decision`** — the officer records `accept` / `reject` / `needs_review` per bid. **HUMAN-ONLY.** The agent never writes the decision — there is a SQL `CHECK + trigger` that refuses any agent-originated insert.
 6. **`get_audit_trail`** — full audit trail of AI proposals + human decisions, exportable as a signed PDF for the procurement archive.
 
-For the *Digital economy / Open contracting* theme, BidBox also exposes:
+For the *Digital economy / Open contracting* theme, Uwazi also exposes:
 
 - **`open_notices`** — a citizen-facing tool that returns every active tender in plain English: eligibility checklist, mandatory documents, deadlines. No legalese, no AI inferences — just structured facts.
 - **`explain_tender_in_plain_language`** — an AI-generated plain-language summary for a small supplier, citizen, or journalist. Every claim cites a paragraph. Stamped `ai_generated=True`.
-- **`fetch_tender_notice`** — pulls a tender notice from a public procurement portal URL via the **official `mcp-server-fetch` MCP server** (a server BidBox did not write).
+- **`fetch_tender_notice`** — pulls a tender notice from a public procurement portal URL via the **official `mcp-server-fetch` MCP server** (a server Uwazi did not write).
 
 ## The architectural rule (the most important sentence in this README)
 
@@ -61,7 +61,7 @@ Enforced at three layers — see [ARCHITECTURE.md](./ARCHITECTURE.md):
 
 1. **SQL** — `CHECK (decided_by <> 'agent')` + `BEFORE INSERT` trigger on `decisions`. A judge can verify this in 60 seconds:
    ```bash
-   sqlite3 bidbox.db "INSERT INTO decisions (id, tender_id, bid_id, decision, rationale, decided_by, decided_at) VALUES ('hack', 't', 'b', 'accept', 'agent hack', 'agent', datetime('now'));"
+   sqlite3 uwazi.db "INSERT INTO decisions (id, tender_id, bid_id, decision, rationale, decided_by, decided_at) VALUES ('hack', 't', 'b', 'accept', 'agent hack', 'agent', datetime('now'));"
    # → Parse error: agent may not record decisions — human-in-the-loop rule (ARCHITECTURE.md §5)
    ```
 2. **MCP tool** — `record_officer_decision` refuses any request where `principal_kind='agent'`. Verified by `tests/test_human_in_the_loop.py`.
@@ -83,7 +83,7 @@ Enforced at three layers — see [ARCHITECTURE.md](./ARCHITECTURE.md):
 ## Project structure
 
 ```
-bidbox/
+uwazi/
 ├── README.md                  ← you are here
 ├── ARCHITECTURE.md            ← one-page architectural contract (judge-required)
 ├── EVALS.md                   ← 33 tests + 1 known unfixed failure (judge-required)
@@ -97,7 +97,7 @@ bidbox/
 ├── .env.example
 ├── docs/
 │   └── architecture-deep-dive.md  ← the full ADR + schema contract
-├── src/bidbox/
+├── src/uwazi/
 │   ├── config.py              ← env-driven settings
 │   ├── models.py              ← Pydantic domain models
 │   ├── db.py                  ← SQLite schema + audit trail + decision CHECK + trigger
@@ -133,8 +133,8 @@ bidbox/
 If `./run-demo.sh` is too magical, here are the steps it runs:
 
 ```bash
-git clone https://github.com/Roy-Wanyoike/bidbox.git
-cd bidbox
+git clone https://github.com/Roy-Wanyoike/uwazi.git
+cd uwazi
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 cp .env.example .env   # set OPENAI_API_KEY for real Qwen scores; leave blank for STUB
@@ -143,16 +143,16 @@ cp .env.example .env   # set OPENAI_API_KEY for real Qwen scores; leave blank fo
 python scripts/seed.py
 
 # 2. Run the agentic evaluation
-python -m bidbox.cli evaluate --tender-id makueni-water-2026
+python -m uwazi.cli evaluate --tender-id makueni-water-2026
 
 # 3. Demonstrate the human-in-the-loop boundary
-python -m bidbox.cli demonstrate-human-in-the-loop --tender-id makueni-water-2026
+python -m uwazi.cli demonstrate-human-in-the-loop --tender-id makueni-water-2026
 
 # 4. Open the procurement officer review UI
-python -m bidbox.cli serve    # → http://localhost:8000
+python -m uwazi.cli serve    # → http://localhost:8000
 
-# 5. (Optional) Drive BidBox from any MCP client
-python -m bidbox.cli mcp      # stdio MCP server
+# 5. (Optional) Drive Uwazi from any MCP client
+python -m uwazi.cli mcp      # stdio MCP server
 ```
 
 ## Documentation (read these in order if you are a judge)
@@ -172,7 +172,7 @@ The brief rewards honesty about what's unfinished. Here's the list:
 
 - **Run-to-run variance on the real open-weights model is not measured.** STUB mode is deterministic; the real Qwen endpoint should be near-deterministic at `temperature=0.0` but I have not measured σ per criterion. See [EVALS.md](./EVALS.md) — this is the one failure I did not fix, with a concrete next-step plan.
 - **LangGraph checkpoint resume is not yet wired into the UI.** The graph is compiled with `MemorySaver`, so an interrupted evaluation can in principle be resumed, but the review UI does not yet expose the resume button.
-- **PDF ingestion is tested only via the Markdown path.** `pdf.py` supports PDFs via `pdfplumber`, but the test suite covers Markdown only. Committing a binary PDF would bloat the repo. To verify manually: `python -c "from bidbox.pdf import ingest_pdf; print(len(ingest_pdf('/path/to/real.pdf')))"`.
+- **PDF ingestion is tested only via the Markdown path.** `pdf.py` supports PDFs via `pdfplumber`, but the test suite covers Markdown only. Committing a binary PDF would bloat the repo. To verify manually: `python -c "from uwazi.pdf import ingest_pdf; print(len(ingest_pdf('/path/to/real.pdf')))"`.
 - **The external `mcp-server-fetch` is only tested manually.** The test suite verifies the fallback path (server not available → graceful degradation). The happy path (real URL fetch) requires a running subprocess.
 - **I have not yet sat with a real Makueni procurement officer for a day.** The sample tender is shaped after reading publicly-available PPIP notices. The prompts + criteria weights reflect my reading, not a real officer's. With one more week of build time, that conversation is the first thing I would do.
 
@@ -180,7 +180,7 @@ The brief rewards honesty about what's unfinished. Here's the list:
 
 > **The agent may propose scores, risk flags, and recommendations. The agent may NEVER record a decision.**
 
-If you remember one thing about BidBox, remember this. It is the difference between an agent that *assists* a procurement officer and an agent that *replaces* one. Procurement law across Africa puts the decision with a human committee. BidBox respects that — at the SQL layer.
+If you remember one thing about Uwazi, remember this. It is the difference between an agent that *assists* a procurement officer and an agent that *replaces* one. Procurement law across Africa puts the decision with a human committee. Uwazi respects that — at the SQL layer.
 
 ## License
 
@@ -188,7 +188,7 @@ MIT. See [LICENSE](./LICENSE).
 
 ## Contact
 
-Roy Wanyoike — Nairobi, Kenya. Repository at https://github.com/Roy-Wanyoike/bidbox.
+Roy Wanyoike — Nairobi, Kenya. Repository at https://github.com/Roy-Wanyoike/uwazi.
 
 <div align="center">
 

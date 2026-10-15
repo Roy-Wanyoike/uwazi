@@ -1,4 +1,4 @@
-"""Pydantic domain models for BidBox.
+"""Pydantic domain models for Uwazi.
 
 These types are the contract between the MCP tools, the agent, the
 storage layer, and the review UI. They are deliberately explicit: every
@@ -53,7 +53,7 @@ class Principal(BaseModel):
     @classmethod
     def agent(cls) -> "Principal":
         """The agent principal — used for AI-originated tool calls."""
-        return cls(id="bidbox-agent", kind=PrincipalKind.AGENT, display_name="BidBox Agent")
+        return cls(id="uwazi-agent", kind=PrincipalKind.AGENT, display_name="Uwazi Agent")
 
 
 # ---------------------------------------------------------------------------

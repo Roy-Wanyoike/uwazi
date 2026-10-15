@@ -2,7 +2,7 @@
 
 > **The agent may propose scores, risk flags, and recommendations. The agent may NEVER record a decision.**
 
-This document is the canonical architectural contract for BidBox. Every design decision in the codebase traces back to one of the rules below.
+This document is the canonical architectural contract for Uwazi. Every design decision in the codebase traces back to one of the rules below.
 
 ## 1. The four hard rules
 
@@ -60,7 +60,7 @@ The orchestrator is an MCP client. Every step in the workflow is an MCP tool cal
 
 Every AI output passes through the citation validator before it is persisted. The validator performs five checks:
 
-1. **Existence** — does the cited document exist in the bidbox store?
+1. **Existence** — does the cited document exist in the uwazi store?
 2. **Pointer correctness** — does the citation point to a paragraph that actually exists in that document?
 3. **Span support** — does the cited paragraph actually contain the claim being made? (Embedding similarity ≥ 0.75 — configurable.)
 4. **Claim strength** — is the claim stronger than the evidence supports? (Heuristic: if the claim uses "must", "shall", "always", but the evidence uses "may", "should", "sometimes" — the claim is too strong.)
@@ -70,7 +70,7 @@ If any check fails, the claim is not published. The agent surfaces a `[This scor
 
 ## 5. The human-in-the-loop boundary
 
-This is the single most important architectural decision in BidBox. It is enforced at three layers:
+This is the single most important architectural decision in Uwazi. It is enforced at three layers:
 
 ### Schema level
 
@@ -135,11 +135,11 @@ The challenge brief says: *"Build an agentic AI, using MCP, plus open-source too
 
 1. **A single permission surface.** The `record_officer_decision` tool can refuse requests where `principal.kind='agent'`. There is no back door.
 2. **Provider-agnostic LLM.** Any MCP-compatible client can drive the workflow. We are not locked to a single LLM vendor.
-3. **Composable.** A procurement office can mount BidBox's MCP server alongside their existing tools (file system, calendar, email) and let a higher-level agent compose across them.
+3. **Composable.** A procurement office can mount Uwazi's MCP server alongside their existing tools (file system, calendar, email) and let a higher-level agent compose across them.
 
 ## 9. What is explicitly out of scope
 
-- **Bid submission portal.** BidBox evaluates bids; it does not receive them. Bids arrive as documents (PDF or Markdown) via `ingest_bid`.
+- **Bid submission portal.** Uwazi evaluates bids; it does not receive them. Bids arrive as documents (PDF or Markdown) via `ingest_bid`.
 - **Payment integration.** Not part of the evaluation workflow.
-- **Multi-tenant.** BidBox is single-tenant per deployment. A procurement office runs their own instance.
-- **Appeals workflow.** A losing bidder's appeal is a separate process that BidBox does not implement; the audit trail is exportable so the appeal can be informed by it.
+- **Multi-tenant.** Uwazi is single-tenant per deployment. A procurement office runs their own instance.
+- **Appeals workflow.** A losing bidder's appeal is a separate process that Uwazi does not implement; the audit trail is exportable so the appeal can be informed by it.

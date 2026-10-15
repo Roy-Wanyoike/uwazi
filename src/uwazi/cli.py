@@ -1,4 +1,4 @@
-"""CLI driver — `python -m bidbox.cli <command>`.
+"""CLI driver — `python -m uwazi.cli <command>`.
 
 Used for the demo: seed → evaluate → open the review UI.
 """
@@ -16,7 +16,7 @@ from .config import get_settings
 
 @click.group()
 def cli() -> None:
-    """BidBox — agentic AI for tender evaluation."""
+    """Uwazi — agentic AI for tender evaluation."""
     pass
 
 
@@ -110,7 +110,7 @@ def demonstrate_human_in_the_loop(tender_id: str) -> None:
         bid_id="any-bid",
         decision="accept",
         rationale="agent attempt — should be refused",
-        principal_id="bidbox-agent",
+        principal_id="uwazi-agent",
         principal_kind="agent",
     )
     click.echo(result)
@@ -125,7 +125,7 @@ def serve() -> None:
 
     settings = get_settings()
     uvicorn.run(
-        "bidbox.api:app",
+        "uwazi.api:app",
         host=settings.review_ui.host,
         port=settings.review_ui.port,
         reload=False,

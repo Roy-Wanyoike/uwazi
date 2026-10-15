@@ -1,4 +1,4 @@
-"""Runtime configuration for BidBox.
+"""Runtime configuration for Uwazi.
 
 Every setting has a sensible default so the demo runs without any
 environment configuration. Production deployments override via the
@@ -41,7 +41,7 @@ def _env_float(key: str, default: float) -> float:
 class LLMConfig:
     """Provider-agnostic LLM configuration.
 
-    BidBox uses the `openai` SDK pointed at any OpenAI-compatible endpoint.
+    Uwazi uses the `openai` SDK pointed at any OpenAI-compatible endpoint.
     The default works with OpenAI, Qwen via ModelScope, OpenRouter, or a
     local Llama server (e.g. `vllm serve`).
     """
@@ -67,7 +67,7 @@ class LLMConfig:
 class StorageConfig:
     """SQLite storage configuration."""
 
-    db_path: Path = field(default_factory=lambda: Path(_env("BIDBOX_DB_PATH", "./bidbox.db")))
+    db_path: Path = field(default_factory=lambda: Path(_env("UWAZI_DB_PATH", "./uwazi.db")))
 
 
 @dataclass(frozen=True)
@@ -131,7 +131,7 @@ class Settings:
 def get_settings() -> Settings:
     """Return the singleton settings instance.
 
-    BidBox does not need hot-reloadable config — settings are read at
+    Uwazi does not need hot-reloadable config — settings are read at
     process startup. Tests override by constructing their own Settings.
     """
     return Settings()

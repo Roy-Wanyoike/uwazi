@@ -5,7 +5,7 @@ both PDFs (page-based) and Markdown (no pages).
 """
 from __future__ import annotations
 
-from bidbox.pdf import (
+from uwazi.pdf import (
     citation_for,
     ingest_document,
     ingest_markdown,

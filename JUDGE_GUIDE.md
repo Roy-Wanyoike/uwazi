@@ -1,4 +1,4 @@
-# Judge Guide — BidBox
+# Judge Guide — Uwazi
 
 > For the challenge judges. This document walks through every criterion in the rubric and points you to the exact files / commands / demo moments that score against it.
 
@@ -12,21 +12,21 @@ Total: **100 points**. Distribution: Agentic depth & MCP craft (30) + Open-sourc
 
 ### What to read
 
-- [src/bidbox/orchestrator.py](./src/bidbox/orchestrator.py) — the LangGraph `StateGraph` with 5 nodes and a conditional recovery edge. The agent plans (the graph topology), calls tools (each node calls an LLM via the gateway), and recovers (the `_route_after_extract` edge skips the bid-analysis nodes if the extractor returned no criteria; per-bid failures in `analyze_bids` / `score_bids` / `flag_risks` are caught and short-circuited rather than crashing the whole run).
-- [src/bidbox/mcp_server.py](./src/bidbox/mcp_server.py) — the 10-tool MCP surface. Every tool is independently callable; a stranger can reuse `list_tenders` without ever invoking `evaluate_bids`. The tool boundaries are the public protocol.
-- [src/bidbox/external_mcp.py](./src/bidbox/external_mcp.py) — the integration with the **official `mcp-server-fetch`** (a server BidBox did not write). `fetch_tender_notice` calls the external server via MCP stdio, then passes the content to the internal `ingest_tender` tool.
+- [src/uwazi/orchestrator.py](./src/uwazi/orchestrator.py) — the LangGraph `StateGraph` with 5 nodes and a conditional recovery edge. The agent plans (the graph topology), calls tools (each node calls an LLM via the gateway), and recovers (the `_route_after_extract` edge skips the bid-analysis nodes if the extractor returned no criteria; per-bid failures in `analyze_bids` / `score_bids` / `flag_risks` are caught and short-circuited rather than crashing the whole run).
+- [src/uwazi/mcp_server.py](./src/uwazi/mcp_server.py) — the 10-tool MCP surface. Every tool is independently callable; a stranger can reuse `list_tenders` without ever invoking `evaluate_bids`. The tool boundaries are the public protocol.
+- [src/uwazi/external_mcp.py](./src/uwazi/external_mcp.py) — the integration with the **official `mcp-server-fetch`** (a server Uwazi did not write). `fetch_tender_notice` calls the external server via MCP stdio, then passes the content to the internal `ingest_tender` tool.
 
 ### What to verify live
 
 ```bash
 # 1. The graph topology
-python -c "from bidbox.orchestrator import BidboxGraph; from bidbox.gateway import Gateway; from bidbox.config import LLMConfig; g = BidboxGraph(Gateway(LLMConfig())); print(g._compiled.get_graph().draw_ascii())"
+python -c "from uwazi.orchestrator import UwaziGraph; from uwazi.gateway import Gateway; from uwazi.config import LLMConfig; g = UwaziGraph(Gateway(LLMConfig())); print(g._compiled.get_graph().draw_ascii())"
 
 # 2. List the MCP tools
-python -c "from bidbox.mcp_server import mcp; print([t.name for t in mcp._tool_manager.list_tools()])"
+python -c "from uwazi.mcp_server import mcp; print([t.name for t in mcp._tool_manager.list_tools()])"
 
 # 3. The external MCP server
-python -c "from bidbox.external_mcp import is_fetch_server_available; print('available:', is_fetch_server_available())"
+python -c "from uwazi.external_mcp import is_fetch_server_available; print('available:', is_fetch_server_available())"
 ```
 
 ### Why this scores
@@ -45,8 +45,8 @@ python -c "from bidbox.external_mcp import is_fetch_server_available; print('ava
 ### What to verify
 
 ```bash
-git clone https://github.com/Roy-Wanyoike/bidbox.git
-cd bidbox
+git clone https://github.com/Roy-Wanyoike/uwazi.git
+cd uwazi
 ./run-demo.sh    # one command: venv, install, seed, evaluate, open UI
 ```
 
@@ -75,7 +75,7 @@ The README has a *What is unfinished* section. The headline gaps:
 
 The workflow matches the challenge brief's literal framing: *"Sorting bids, ticking off documents, checking each bidder, comparing prices and writing the report is 26 days of committee work today. Your agent should do the same work in about twenty minutes, and then stop."*
 
-BidBox does exactly this:
+Uwazi does exactly this:
 
 1. **Sort bids** — `ingest_bid` × N, then `evaluate_bids` ranks them.
 2. **Tick off documents** — the RiskAgent flags missing mandatory documents (ISO 9001, TCC) per bid.
@@ -114,7 +114,7 @@ Every score, every risk flag, every recommendation cites the source paragraph. T
 
 ### Readable log
 
-The audit trail ([`get_audit_trail` MCP tool](./src/bidbox/mcp_server.py)) lists every AI proposal (orchestrator run, plain-language explanation) and every human decision (officer decision) in chronological order. Each entry has `actor`, `actor_kind` (`human` or `agent`), `payload`, `timestamp`. The trail is queryable and exportable.
+The audit trail ([`get_audit_trail` MCP tool](./src/uwazi/mcp_server.py)) lists every AI proposal (orchestrator run, plain-language explanation) and every human decision (officer decision) in chronological order. Each entry has `actor`, `actor_kind` (`human` or `agent`), `payload`, `timestamp`. The trail is queryable and exportable.
 
 ### Known cost per run
 
@@ -123,7 +123,7 @@ The orchestrator returns `token_cost_cents` and `tokens_used` in the final state
 ### Live audit defense demo
 
 ```bash
-python -m bidbox.cli audit --tender-id makueni-water-2026
+python -m uwazi.cli audit --tender-id makueni-water-2026
 ```
 
 Returns JSON. The judge can see:

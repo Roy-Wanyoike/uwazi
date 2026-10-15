@@ -15,7 +15,7 @@ Open the [README](./README.md) and the [SUBMISSION.md](./SUBMISSION.md). Show:
 - **The problem.** Public procurement in African institutions takes days of manual evaluation. A single tender can attract dozens of bids; a procurement officer reads each bid against every criterion, scores it, flags compliance risks, and writes a defensible report — by hand, in a Word document, with no audit trail.
 - **The architectural rule.** *"The agent may propose scores, risk flags, and recommendations. The agent may NEVER record a decision."* Say this out loud. Show the SUBMISSION.md section that restates it. This is the slide that earns the track's "human-in-the-loop" requirement.
 
-The one sentence: "BidBox is an agentic AI on MCP that turns tender evaluation from a days-long manual exercise into a 30-minute officer-reviewed exercise — with a hard rule that the AI proposes and the officer decides."
+The one sentence: "Uwazi is an agentic AI on MCP that turns tender evaluation from a days-long manual exercise into a 30-minute officer-reviewed exercise — with a hard rule that the AI proposes and the officer decides."
 
 ---
 
@@ -43,8 +43,8 @@ Mention: every capability is an MCP tool, so any MCP-compatible client (Claude D
 In a terminal:
 
 ```bash
-git clone https://github.com/Roy-Wanyoike/bidbox.git
-cd bidbox
+git clone https://github.com/Roy-Wanyoike/uwazi.git
+cd uwazi
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
 cp .env.example .env   # OPENAI_API_KEY blank → STUB mode (deterministic, no network)
@@ -76,7 +76,7 @@ The samples are Markdown — so the audience can read them on GitHub. The pipeli
 ## 6:00 – 9:00 · Run the agentic evaluation
 
 ```bash
-python -m bidbox.cli evaluate --tender-id makueni-water-2026
+python -m uwazi.cli evaluate --tender-id makueni-water-2026
 ```
 
 This calls the `evaluate_bids` MCP tool, which:
@@ -113,7 +113,7 @@ Talk to the audience while it runs: "Notice the recommendation is a proposal, no
 ## 9:00 – 13:00 · The review UI (the human-in-the-loop)
 
 ```bash
-python -m bidbox.cli serve   # http://localhost:8000
+python -m uwazi.cli serve   # http://localhost:8000
 ```
 
 Open the browser. The single-page UI shows:
@@ -136,7 +136,7 @@ Open the browser. The single-page UI shows:
 Open a second terminal. Run the demo command:
 
 ```bash
-python -m bidbox.cli demonstrate-human-in-the-loop --tender-id makueni-water-2026
+python -m uwazi.cli demonstrate-human-in-the-loop --tender-id makueni-water-2026
 ```
 
 This attempts to call `record_officer_decision` with `principal_kind='agent'`. The tool refuses:
@@ -152,7 +152,7 @@ This attempts to call `record_officer_decision` with `principal_kind='agent'`. T
 Now show what happens if you bypass the tool layer and try to write directly to the database:
 
 ```bash
-sqlite3 bidbox.db "INSERT INTO decisions (id, tender_id, bid_id, decision, rationale, decided_by, decided_at) VALUES ('hack', 'makueni-water-2026', 'bid-sahara', 'accept', 'agent hack', 'agent', datetime('now'));"
+sqlite3 uwazi.db "INSERT INTO decisions (id, tender_id, bid_id, decision, rationale, decided_by, decided_at) VALUES ('hack', 'makueni-water-2026', 'bid-sahara', 'accept', 'agent hack', 'agent', datetime('now'));"
 ```
 
 Output:
@@ -168,7 +168,7 @@ That is the SQL trigger. Even if a bug in the tool layer let the agent through, 
 ## 16:00 – 18:00 · The audit trail
 
 ```bash
-python -m bidbox.cli audit --tender-id makueni-water-2026
+python -m uwazi.cli audit --tender-id makueni-water-2026
 ```
 
 Returns JSON listing every AI proposal (the orchestrator's report, every score, every risk flag) and every human decision (officer-1's `accept` on AquaForce), in chronological order. Mention: this is exportable as a signed PDF for the procurement archive — that's the compliance artifact a real audit office would demand.
@@ -201,15 +201,15 @@ Every AI proposal is timestamped, attributed, and stamped `actor_kind=agent`. Ev
 
 Three things the judges should remember:
 
-1. **MCP-native.** Every capability is an MCP tool. The orchestrator is an MCP client. The procurement office can mount BidBox's MCP server alongside their existing tools (file system, calendar, email) and let a higher-level agent compose across them. Show the [mcp_server.py](./src/bidbox/mcp_server.py) file — the tool list is the protocol surface.
+1. **MCP-native.** Every capability is an MCP tool. The orchestrator is an MCP client. The procurement office can mount Uwazi's MCP server alongside their existing tools (file system, calendar, email) and let a higher-level agent compose across them. Show the [mcp_server.py](./src/uwazi/mcp_server.py) file — the tool list is the protocol surface.
 
-2. **Provider-agnostic.** The same code runs on Qwen via ModelScope, OpenAI, or a local Llama. Show the [gateway.py](./src/bidbox/gateway.py) — one `complete()` method, no vendor lock-in. The demo ran in STUB mode (no API key needed) but the production gateway calls any OpenAI-compatible endpoint.
+2. **Provider-agnostic.** The same code runs on Qwen via ModelScope, OpenAI, or a local Llama. Show the [gateway.py](./src/uwazi/gateway.py) — one `complete()` method, no vendor lock-in. The demo ran in STUB mode (no API key needed) but the production gateway calls any OpenAI-compatible endpoint.
 
 3. **The architectural rule.** *"The agent may propose scores, risk flags, and recommendations. The agent may NEVER record a decision."* Say this one more time. It is the slide that earns the track's "AI recommends, a human-in-the-loop decides" requirement. Show the [SUBMISSION.md](./SUBMISSION.md) section that restates it. Show the test that runs on every commit: [tests/test_human_in_the_loop.py](./tests/test_human_in_the_loop.py).
 
 Close with the one-liner:
 
-> "BidBox turns a days-long manual tender evaluation into a 30-minute officer-reviewed exercise — with a hard architectural rule that the AI proposes and the procurement officer decides, enforced at three layers including the database itself."
+> "Uwazi turns a days-long manual tender evaluation into a 30-minute officer-reviewed exercise — with a hard architectural rule that the AI proposes and the procurement officer decides, enforced at three layers including the database itself."
 
 ---
 
@@ -219,7 +219,7 @@ Close with the one-liner:
 |---|---|
 | Internet is flaky | STUB mode (no API key) — the demo runs deterministically offline. |
 | A tool call fails | Show the relevant test file — the test suite demonstrates the same behaviour. |
-| Browser doesn't open | Run `python -m bidbox.cli report --tender-id makueni-water-2026` and show the JSON in the terminal. |
+| Browser doesn't open | Run `python -m uwazi.cli report --tender-id makueni-water-2026` and show the JSON in the terminal. |
 | SQLite is not installed | The Python `sqlite3` module is in the stdlib — it always works. |
 | You're over time | Skip the audit trail section (16:00–18:00) and the human-in-the-loop demo (13:00–16:00). Keep the architecture walk (2:00–4:00) — that is the most important section. |
 
@@ -229,10 +229,10 @@ Close with the one-liner:
 
 If the reviewer has 10 minutes, point them at:
 
-1. [README.md](./README.md) — what BidBox is and the architectural rule.
+1. [README.md](./README.md) — what Uwazi is and the architectural rule.
 2. [ARCHITECTURE.md](./ARCHITECTURE.md) — the four hard rules + the human-in-the-loop boundary.
-3. [src/bidbox/mcp_server.py](./src/bidbox/mcp_server.py) — the 7 MCP tools.
-4. [src/bidbox/orchestrator.py](./src/bidbox/orchestrator.py) — how the agent chains the four sub-agents.
+3. [src/uwazi/mcp_server.py](./src/uwazi/mcp_server.py) — the 7 MCP tools.
+4. [src/uwazi/orchestrator.py](./src/uwazi/orchestrator.py) — how the agent chains the four sub-agents.
 5. [tests/test_human_in_the_loop.py](./tests/test_human_in_the_loop.py) — the test that proves the agent cannot record a decision.
 
 That's the whole submission. Everything else is implementation detail.

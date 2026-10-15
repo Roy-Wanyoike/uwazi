@@ -1,10 +1,10 @@
-"""External MCP server integration — BidBox uses an MCP server it did not write.
+"""External MCP server integration — Uwazi uses an MCP server it did not write.
 
 The challenge brief requires: *"One MCP server you did not write.
 Community, official, or vendor. One line on why it beats writing it
 yourself."*
 
-BidBox integrates the official MCP fetch server
+Uwazi integrates the official MCP fetch server
 (`mcp` Python package's `mcp.server.fetch` — see
 https://github.com/modelcontextprotocol/servers/tree/main/src/fetch)
 to pull tender notices from public procurement-portal URLs. The

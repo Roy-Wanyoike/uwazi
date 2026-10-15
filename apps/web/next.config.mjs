@@ -6,7 +6,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.BIDBOX_API_URL ?? 'http://localhost:8000'}/api/:path*`,
+        destination: `${process.env.UWAZI_API_URL ?? 'http://localhost:8000'}/api/:path*`,
       },
     ];
   },

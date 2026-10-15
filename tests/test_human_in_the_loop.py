@@ -12,10 +12,10 @@ import json
 
 import pytest
 
-from bidbox.db import in_memory_db
-from bidbox.models import Decision, DecisionType
-from bidbox.mcp_server import record_officer_decision
-from bidbox import db as db_module
+from uwazi.db import in_memory_db
+from uwazi.models import Decision, DecisionType
+from uwazi.mcp_server import record_officer_decision
+from uwazi import db as db_module
 
 
 @pytest.fixture(autouse=True)
@@ -98,7 +98,7 @@ def test_tool_refuses_agent_principal() -> None:
         bid_id="b1",
         decision="accept",
         rationale="agent attempt — should be refused",
-        principal_id="bidbox-agent",
+        principal_id="uwazi-agent",
         principal_kind="agent",
     )
     d = json.loads(result)
