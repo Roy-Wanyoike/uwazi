@@ -172,43 +172,9 @@ python -m uwazi.cli serve    # → http://localhost:8000
 python -m uwazi.cli mcp      # stdio MCP server
 ```
 
-## Documentation (read these in order if you are a judge)
-
-1. [ARCHITECTURE.md](./ARCHITECTURE.md) — one page: agent shape, MCP servers built vs borrowed, the human-in-the-loop gate.
-2. [EVALS.md](./EVALS.md) — 42 tests with pass/fail results + one known unfixed failure with next steps.
-3. [JUDGE_GUIDE.md](./JUDGE_GUIDE.md) — walks through every judging criterion, points to exact files / commands.
-4. [SUBMISSION_TEXT.md](./SUBMISSION_TEXT.md) — the 300-word submission text (theme, institution, workflow).
-5. [DEMO_SCRIPT.md](./DEMO_SCRIPT.md) — the 20-minute live review walkthrough.
-6. [INVESTORS.md](./INVESTORS.md) — market size, business model, traction, roadmap.
-7. [SUBMISSION.md](./SUBMISSION.md) — build-window scope + 5 files to read first.
-8. [docs/architecture-deep-dive.md](./docs/architecture-deep-dive.md) — the full ADR + schema contract.
-
-## What is unfinished (honest list)
-
-The brief rewards honesty about what's unfinished. Here's the list:
-
-- **The required public three-minute video is not yet linked.** A recording script exists, but a script is not a submission artifact.
-- **A full real-model run still needs to be captured.** The Qwen/ModelScope path is configured; automated tests use deterministic STUB mode, which does not satisfy the open-weights requirement by itself.
-- **Read-only MCP calls do not yet have a global tool-call log.** State changes, AI proposals, and human decisions are audited. Complete input/output logging for read-only calls remains work.
-- **Run-to-run variance on the real open-weights model is not measured.** STUB mode is deterministic; the real Qwen endpoint should be near-deterministic at `temperature=0.0` but I have not measured σ per criterion. See [EVALS.md](./EVALS.md) — this is the one failure I did not fix, with a concrete next-step plan.
-- **LangGraph checkpoint resume is not yet wired into the UI.** The graph is compiled with `MemorySaver`, so an interrupted evaluation can in principle be resumed, but the review UI does not yet expose the resume button.
-- **PDF ingestion is tested only via the Markdown path.** `pdf.py` supports PDFs via `pdfplumber`, but the test suite covers Markdown only. Committing a binary PDF would bloat the repo. To verify manually: `python -c "from uwazi.pdf import ingest_pdf; print(len(ingest_pdf('/path/to/real.pdf')))"`.
-- **The external `mcp-server-fetch` is only tested manually.** The test suite verifies the fallback path (server not available → graceful degradation). The happy path (real URL fetch) requires a running subprocess.
-- **I have not yet sat with a real Makueni procurement officer for a day.** The sample tender is shaped after reading publicly-available PPIP notices. The prompts + criteria weights reflect my reading, not a real officer's. With one more week of build time, that conversation is the first thing I would do.
-
-## The architectural rule, restated one more time
-
-> **The agent may propose scores, risk flags, and recommendations. The agent may NEVER record a decision.**
-
-If you remember one thing about Uwazi, remember this. It is the difference between an agent that *assists* a procurement officer and an agent that *replaces* one. Procurement law across Africa puts the decision with a human committee. Uwazi respects that — at the SQL layer.
-
 ## License
 
 MIT. See [LICENSE](./LICENSE).
-
-## Contact
-
-Roy Wanyoike — Nairobi, Kenya. Repository at https://github.com/Roy-Wanyoike/uwazi.
 
 <div align="center">
 
