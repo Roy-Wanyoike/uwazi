@@ -1,16 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <defs>
-    <linearGradient id="fav-grad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#2563eb"/>
-      <stop offset="100%" stop-color="#9333ea"/>
-    </linearGradient>
-  </defs>
-  <rect width="32" height="32" rx="7" fill="url(#fav-grad)"/>
-  <path d="M9 8 L9 18 Q9 23 14 23 L18 23 Q23 23 23 18 L23 8"
-        fill="none" stroke="white" stroke-width="2.6"
-        stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="16" cy="15" r="2.4" fill="white"/>
-  <path d="M13.5 19.2 L15.2 20.8 L18.5 17.4"
-        fill="none" stroke="white" stroke-width="1.6"
-        stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><defs><linearGradient id="fav-grad" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="#2563eb"/><stop offset="100%" stop-color="#9333ea"/></linearGradient></defs><rect width="32" height="32" fill="url(#fav-grad)" rx="7"/><path fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M9 8 L9 18 Q9 23 14 23 L18 23 Q23 23 23 18 L23 8"/><circle cx="16" cy="15" r="2.4" fill="#fff"/><path fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M13.5 19.2 L15.2 20.8 L18.5 17.4" opacity=".85"/></svg>
