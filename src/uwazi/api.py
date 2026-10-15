@@ -261,6 +261,29 @@ async def get_tender(tender_id: str) -> dict:
     decisions = db.list_decisions(tender_id)
     audit = db.list_audit(tender_id)
 
+    # Enrich the report with per-bid `scores` (the BidEvaluation model
+    # only carries `risk_flags`, not scores — the scores live in the DB
+    # separately by bid_id). The Next.js BidCard component reads
+    # `bid.scores` and would throw TypeError on undefined otherwise.
+    report_dict = None
+    if report is not None:
+        report_dict = report.model_dump(mode="json")
+        for bid_eval in report_dict.get("bids", []):
+            bid_id = bid_eval.get("bid_id")
+            if bid_id:
+                scores = db.list_scores(tender_id, bid_id)
+                bid_eval["scores"] = [
+                    {
+                        "score": s.score,
+                        "rationale": s.rationale,
+                        "citation_tender_paragraph": s.citation_tender.paragraph_text,
+                        "citation_bid_paragraph": s.citation_bid.paragraph_text,
+                    }
+                    for s in scores
+                ]
+            else:
+                bid_eval["scores"] = []
+
     return {
         "tender": {
             "id": tender.id,
@@ -273,7 +296,7 @@ async def get_tender(tender_id: str) -> dict:
             {"id": b.id, "bidder_name": b.bidder_name, "ingested_at": b.ingested_at.isoformat()}
             for b in bids
         ],
-        "report": report.model_dump(mode="json") if report else None,
+        "report": report_dict,
         "decisions": [
             {
                 "id": d.id,

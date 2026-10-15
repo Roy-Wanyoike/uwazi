@@ -34,7 +34,7 @@ function BidCard({ bid, rank, decisions, tenderId }: { bid: BidEvaluation; rank:
       </div>
       <div className="bid-meta">{bid.recommendation_rationale}</div>
 
-      {bid.risk_flags.length > 0 && (
+      {bid.risk_flags && bid.risk_flags.length > 0 && (
         <div style={{ marginTop: 12 }}>
           <div className="citation-label">Risk flags</div>
           {bid.risk_flags.map((r, i) => (
@@ -49,7 +49,7 @@ function BidCard({ bid, rank, decisions, tenderId }: { bid: BidEvaluation; rank:
         </div>
       )}
 
-      {bid.scores.length > 0 && (
+      {bid.scores && bid.scores.length > 0 && (
         <details style={{ marginTop: 12 }}>
           <summary style={{ cursor: "pointer", color: "var(--accent)", fontSize: 13 }}>
             Show {bid.scores.length} score{bid.scores.length === 1 ? "" : "s"} with citations
