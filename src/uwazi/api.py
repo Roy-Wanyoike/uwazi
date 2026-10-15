@@ -42,17 +42,71 @@ WEB_DIR = Path(__file__).resolve().parent.parent.parent / "web"
 # Path to the sample data directory. On a real install, this is the
 # `samples/` folder at the repo root, resolved relative to this file.
 SAMPLES_DIR = Path(__file__).resolve().parent.parent.parent / "samples"
-TENDER_PATH = SAMPLES_DIR / "tender-makueni-water.md"
-BIDS = [
-    ("bid-aquaforce", SAMPLES_DIR / "bid-aquaforce.md", "AquaForce Ltd"),
-    ("bid-hydrotech", SAMPLES_DIR / "bid-hydrotech.md", "HydroTech Ltd"),
-    ("bid-sahara", SAMPLES_DIR / "bid-sahara.md", "Sahara Civils Ltd"),
+
+# All sample tenders + their bids. Auto-seeded on FastAPI startup if the
+# DB is empty (so the Vercel deployment is self-contained — a judge visiting
+# the deployed URL sees 5 tenders × 3 bids immediately).
+TENDERS = [
+    (
+        "makueni-water-2026",
+        "Makueni County Water Reticulation Project",
+        "Government of Makueni County — Department of Water & Sanitation",
+        SAMPLES_DIR / "tender-makueni-water.md",
+        [
+            ("bid-aquaforce", "AquaForce Ltd", SAMPLES_DIR / "bid-aquaforce.md"),
+            ("bid-hydrotech", "HydroTech Ltd", SAMPLES_DIR / "bid-hydrotech.md"),
+            ("bid-sahara", "Sahara Civils Ltd", SAMPLES_DIR / "bid-sahara.md"),
+        ],
+    ),
+    (
+        "nairobi-health-equipment-2026",
+        "Nairobi County Hospital Equipment Supply",
+        "Nairobi City County — Department of Health Services",
+        SAMPLES_DIR / "tender-nairobi-health-equipment.md",
+        [
+            ("bid-nairobi-medequip", "MedEquip Africa Ltd", SAMPLES_DIR / "bid-nairobi-medequip.md"),
+            ("bid-nairobi-healthtech", "HealthTech Distributors", SAMPLES_DIR / "bid-nairobi-healthtech.md"),
+            ("bid-nairobi-sahara", "Sahara Medical Imports", SAMPLES_DIR / "bid-nairobi-sahara.md"),
+        ],
+    ),
+    (
+        "mombasa-road-rehab-2026",
+        "Mombasa County Road Rehabilitation Project",
+        "Mombasa County Government — Department of Roads & Public Works",
+        SAMPLES_DIR / "tender-mombasa-road-rehab.md",
+        [
+            ("bid-mombasa-coastbuild", "CoastBuild Contractors Ltd", SAMPLES_DIR / "bid-mombasa-coastbuild.md"),
+            ("bid-mombasa-highway", "Highway Civils Ltd", SAMPLES_DIR / "bid-mombasa-highway.md"),
+            ("bid-mombasa-fasttrack", "FastTrack Civils", SAMPLES_DIR / "bid-mombasa-fasttrack.md"),
+        ],
+    ),
+    (
+        "kisumu-school-furniture-2026",
+        "Kisumu County School Furniture Supply",
+        "Kisumu County Government — Department of Education",
+        SAMPLES_DIR / "tender-kisumu-school-furniture.md",
+        [
+            ("bid-kisumu-lakecraft", "LakeCraft Furniture Ltd", SAMPLES_DIR / "bid-kisumu-lakecraft.md"),
+            ("bid-kisumu-comfort", "Comfort Seats Ltd", SAMPLES_DIR / "bid-kisumu-comfort.md"),
+            ("bid-kisumu-lakeregion", "Lake Region Fabrications", SAMPLES_DIR / "bid-kisumu-lakeregion.md"),
+        ],
+    ),
+    (
+        "nakuru-solar-lighting-2026",
+        "Nakuru County Solar Street Lighting Project",
+        "Nakuru County Government — Department of Energy",
+        SAMPLES_DIR / "tender-nakuru-solar-lighting.md",
+        [
+            ("bid-nakuru-solarbright", "SolarBright Africa Ltd", SAMPLES_DIR / "bid-nakuru-solarbright.md"),
+            ("bid-nakuru-brightvolt", "BrightVolt Solutions", SAMPLES_DIR / "bid-nakuru-brightvolt.md"),
+            ("bid-nakuru-sahara", "Sahara Solar Distributors", SAMPLES_DIR / "bid-nakuru-sahara.md"),
+        ],
+    ),
 ]
-TENDER_ID = "makueni-water-2026"
 
 
 def _seed_if_empty() -> dict[str, Any]:
-    """Seed the sample tender + 3 bids if the DB has no tenders.
+    """Seed all 5 sample tenders + 15 bids if the DB has no tenders.
 
     Returns a summary dict — useful for the /admin/reseed endpoint.
     """
@@ -65,53 +119,58 @@ def _seed_if_empty() -> dict[str, Any]:
             "skipped": True,
         }
 
-    if not TENDER_PATH.exists():
+    if not SAMPLES_DIR.exists():
         return {
             "already_seeded": False,
-            "error": f"sample tender not found at {TENDER_PATH}",
+            "error": f"samples directory not found at {SAMPLES_DIR}",
             "skipped": True,
         }
 
-    # Tender
-    tender = Tender(
-        id=TENDER_ID,
-        title="Makueni County Water Reticulation Project",
-        issuer="Government of Makueni County — Department of Water & Sanitation",
-        country_code="KE",
-        document_path=str(TENDER_PATH),
-    )
-    db.save_tender(tender)
-    tender_doc = ingest_document(
-        doc_id=f"doc-tender-{TENDER_ID}",
-        kind="tender",
-        parent_id=TENDER_ID,
-        source_path=str(TENDER_PATH),
-    )
-    db.save_document(tender_doc)
-
-    # Bids
-    for bid_id, path, bidder_name in BIDS:
-        if not path.exists():
+    tender_count = 0
+    bid_count = 0
+    for tender_id, title, issuer, tender_path, bids in TENDERS:
+        if not tender_path.exists():
             continue
-        bid = Bid(
-            id=bid_id,
-            tender_id=TENDER_ID,
-            bidder_name=bidder_name,
-            document_path=str(path),
+        tender = Tender(
+            id=tender_id,
+            title=title,
+            issuer=issuer,
+            country_code="KE",
+            document_path=str(tender_path),
         )
-        db.save_bid(bid)
-        bid_doc = ingest_document(
-            doc_id=f"doc-bid-{bid_id}",
-            kind="bid",
-            parent_id=bid_id,
-            source_path=str(path),
+        db.save_tender(tender)
+        tender_doc = ingest_document(
+            doc_id=f"doc-tender-{tender_id}",
+            kind="tender",
+            parent_id=tender_id,
+            source_path=str(tender_path),
         )
-        db.save_document(bid_doc)
+        db.save_document(tender_doc)
+        tender_count += 1
+
+        for bid_id, bidder_name, bid_path in bids:
+            if not bid_path.exists():
+                continue
+            bid = Bid(
+                id=bid_id,
+                tender_id=tender_id,
+                bidder_name=bidder_name,
+                document_path=str(bid_path),
+            )
+            db.save_bid(bid)
+            bid_doc = ingest_document(
+                doc_id=f"doc-bid-{bid_id}",
+                kind="bid",
+                parent_id=bid_id,
+                source_path=str(bid_path),
+            )
+            db.save_document(bid_doc)
+            bid_count += 1
 
     return {
         "already_seeded": False,
-        "tender_count": 1,
-        "bid_count": sum(1 for _, p, _ in BIDS if p.exists()),
+        "tender_count": tender_count,
+        "bid_count": bid_count,
         "skipped": False,
     }
 
