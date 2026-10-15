@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { evaluateTender, getTender, recordDecision, type BidEvaluation, type Decision } from "@/lib/api";
+import { evaluateTender, getTender, recordDecision, type BidEvaluation, type Decision, type TenderDetail } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -100,17 +100,40 @@ function BidCard({ bid, rank, decisions, tenderId }: { bid: BidEvaluation; rank:
 
 export default async function TenderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  let data;
+
+  // Defensive wrapper — any failure (network error, malformed response,
+  // null body, missing fields) renders a friendly error card instead of
+  // the generic Next.js "This page couldn't load" overlay.
+  const errorCard = (msg: string) => (
+    <div className="container" style={{ paddingTop: 32 }}>
+      <div className="card" style={{ borderColor: "var(--crit)" }}>
+        <h3 style={{ color: "var(--crit)", marginTop: 0 }}>Cannot reach the API</h3>
+        <p className="bid-meta">{msg}</p>
+        <p className="bid-meta" style={{ marginTop: 12 }}>
+          Check the deployed Vercel URL, the FastAPI service status, and the
+          <code> UWAZI_API_URL</code> binding env var. To verify directly:
+        </p>
+        <pre style={{ marginTop: 8 }}>{`curl https://<your-vercel-url>/api/v1/admin/seed-status
+curl https://<your-vercel-url>/api/v1/tenders/${id}`}</pre>
+      </div>
+    </div>
+  );
+
+  let data: TenderDetail | undefined;
   try {
     data = await getTender(id);
   } catch (e) {
-    return (
-      <div className="container" style={{ paddingTop: 32 }}>
-        <div className="card" style={{ borderColor: "var(--crit)" }}>
-          <h3 style={{ color: "var(--crit)", marginTop: 0 }}>Cannot reach the API</h3>
-          <p className="bid-meta">{e instanceof Error ? e.message : String(e)}</p>
-        </div>
-      </div>
+    return errorCard(e instanceof Error ? e.message : String(e));
+  }
+
+  // Validate shape — the API might return 200 with null/empty/partial body
+  // (e.g., Neon cold-start timeout returns an empty body before FastAPI lifespan
+  // finishes seeding). Render the friendly card instead of throwing.
+  if (!data || !data.tender || !data.tender.title) {
+    return errorCard(
+      "API responded but the tender shape was unexpected. The Neon database " +
+      "may still be cold-starting — wait 5 seconds and reload, or hit " +
+      "/api/v1/admin/seed-status to verify the seed state."
     );
   }
 
