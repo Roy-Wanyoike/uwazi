@@ -6,9 +6,17 @@ and lets the officer record `accept` / `reject` / `needs-review` decisions.
 
 The decision POST endpoint refuses any request where `principal_kind='agent'`.
 The SQL trigger is the second line of defense (see ARCHITECTURE.md §5).
+
+On startup, if the DB is empty AND `AUTO_SEED_ON_START=true` (default),
+the service auto-seeds the sample Makueni tender + 3 bids. This makes
+the Vercel deployment self-contained — each cold start re-seeds the
+ephemeral SQLite, so a judge visiting the deployed URL sees the demo
+data immediately without running `python scripts/seed.py` themselves.
 """
 from __future__ import annotations
 
+import os
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
@@ -19,17 +27,152 @@ from pydantic import BaseModel, Field
 
 from .config import get_settings
 from .db import get_db, new_id
-from .models import AuditEntry, Decision, DecisionType, Principal, PrincipalKind
+from .models import AuditEntry, Bid, Decision, DecisionType, Principal, PrincipalKind, Tender
 from .pdf import ingest_document
 
 WEB_DIR = Path(__file__).resolve().parent.parent.parent / "web"
+
+
+# ---------------------------------------------------------------------------
+# Lifespan — auto-seed on startup if DB is empty
+# ---------------------------------------------------------------------------
+
+# Path to the sample data directory. On a real install, this is the
+# `samples/` folder at the repo root, resolved relative to this file.
+SAMPLES_DIR = Path(__file__).resolve().parent.parent.parent / "samples"
+TENDER_PATH = SAMPLES_DIR / "tender-makueni-water.md"
+BIDS = [
+    ("bid-aquaforce", SAMPLES_DIR / "bid-aquaforce.md", "AquaForce Ltd"),
+    ("bid-hydrotech", SAMPLES_DIR / "bid-hydrotech.md", "HydroTech Ltd"),
+    ("bid-sahara", SAMPLES_DIR / "bid-sahara.md", "Sahara Civils Ltd"),
+]
+TENDER_ID = "makueni-water-2026"
+
+
+def _seed_if_empty() -> dict:
+    """Seed the sample tender + 3 bids if the DB has no tenders.
+
+    Returns a summary dict — useful for the /admin/reseed endpoint.
+    """
+    db = get_db()
+    existing = db.list_tenders()
+    if existing:
+        return {
+            "already_seeded": True,
+            "tender_count": len(existing),
+            "skipped": True,
+        }
+
+    if not TENDER_PATH.exists():
+        return {
+            "already_seeded": False,
+            "error": f"sample tender not found at {TENDER_PATH}",
+            "skipped": True,
+        }
+
+    # Tender
+    tender = Tender(
+        id=TENDER_ID,
+        title="Makueni County Water Reticulation Project",
+        issuer="Government of Makueni County — Department of Water & Sanitation",
+        country_code="KE",
+        document_path=str(TENDER_PATH),
+    )
+    db.save_tender(tender)
+    tender_doc = ingest_document(
+        doc_id=f"doc-tender-{TENDER_ID}",
+        kind="tender",
+        parent_id=TENDER_ID,
+        source_path=str(TENDER_PATH),
+    )
+    db.save_document(tender_doc)
+
+    # Bids
+    for bid_id, path, bidder_name in BIDS:
+        if not path.exists():
+            continue
+        bid = Bid(
+            id=bid_id,
+            tender_id=TENDER_ID,
+            bidder_name=bidder_name,
+            document_path=str(path),
+        )
+        db.save_bid(bid)
+        bid_doc = ingest_document(
+            doc_id=f"doc-bid-{bid_id}",
+            kind="bid",
+            parent_id=bid_id,
+            source_path=str(path),
+        )
+        db.save_document(bid_doc)
+
+    return {
+        "already_seeded": False,
+        "tender_count": 1,
+        "bid_count": sum(1 for _, p, _ in BIDS if p.exists()),
+        "skipped": False,
+    }
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """FastAPI lifespan — runs once at startup (or on each cold start
+    on Vercel serverless)."""
+    auto_seed = os.environ.get("AUTO_SEED_ON_START", "true").lower() in ("1", "true", "yes")
+    seed_result = {"skipped": True}
+    if auto_seed:
+        try:
+            seed_result = _seed_if_empty()
+        except Exception as exc:
+            seed_result = {"error": str(exc), "skipped": True}
+    app.state.seed_result = seed_result
+    yield
+    # shutdown — nothing to do.
 
 
 app = FastAPI(
     title="Uwazi — Procurement Officer Review UI",
     description="The human-in-the-loop screen for Uwazi.",
     version="0.1.0",
+    lifespan=lifespan,
 )
+
+
+# ---------------------------------------------------------------------------
+# Admin — manual re-seed trigger (useful on Vercel for resets)
+# ---------------------------------------------------------------------------
+
+
+@app.post("/api/v1/admin/reseed")
+async def reseed() -> dict:
+    """Drop all tenders/bids/documents and re-seed the sample data.
+
+    Useful on Vercel: trigger this if the DB looks wrong, or to demo
+    the seed → evaluate flow from a clean state.
+    """
+    db = get_db()
+    # Order matters because of FK constraints
+    with db.transaction() as conn:
+        for table in ("audit_trail", "decisions", "reports", "risk_flags",
+                      "scores", "responses", "criteria", "documents",
+                      "bids", "tenders"):
+            conn.execute(f"DELETE FROM {table}")
+    result = _seed_if_empty()
+    return {"reseeded": True, **result}
+
+
+@app.get("/api/v1/admin/seed-status")
+async def seed_status() -> dict:
+    """Check whether the DB has been seeded and how many tenders/bids exist."""
+    db = get_db()
+    tenders = db.list_tenders()
+    bid_count = sum(len(db.list_bids(t.id)) for t in tenders)
+    return {
+        "tender_count": len(tenders),
+        "bid_count": bid_count,
+        "tenders": [{"id": t.id, "title": t.title} for t in tenders],
+        "auto_seed_on_start": os.environ.get("AUTO_SEED_ON_START", "true"),
+    }
 
 
 # ---------------------------------------------------------------------------
