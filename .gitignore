@@ -26,6 +26,12 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# ─── BidBox-specific exceptions ──────────────────────
+# The Python template's `lib/` pattern (above) ignores the Next.js
+# `apps/web/lib/` directory, which is where we keep the typed API
+# client. Override it here so the file actually lands on GitHub.
+!apps/web/lib/
+
 # PyInstaller
 #   Usually these files are written by a python script from a template
 #   before PyInstaller builds the exe, so as to inject date/other infos into it.
